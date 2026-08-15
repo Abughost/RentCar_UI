@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="KM0 rents cars by the day from city stations and airports. Every trip starts at zero." />
+    <meta name="theme-color" content="#F5F6F1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0E1310" media="(prefers-color-scheme: dark)" />
+    <title>KM0 — Every trip starts at zero</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Instrument+Sans:wght@400;500;600;700&family=Martian+Mono:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Runs before the first paint, so a dark-theme user never sees a white flash while
+      // React boots. Kept deliberately tiny and dependency-free; ThemeContext reads the
+      // same key and takes over once mounted.
+      (function () {
+        try {
+          var saved = localStorage.getItem('km0.theme') || 'system'
+          var dark =
+            saved === 'dark' ||
+            (saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light')
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

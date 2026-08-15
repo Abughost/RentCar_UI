@@ -1,0 +1,214 @@
+/* ============================================================
+   DARK THEME — COMPONENT OVERRIDES
+
+   The ramp itself is swapped in tokens.css. What is left here is the handful of
+   places where a straight token inversion is not enough: surfaces that were
+   hardcoded because they are gradients, controls that need to read as recessed
+   rather than raised, and the two objects that have no dark mode at all.
+
+   Ported from the [data-theme="dark"] block of km0-rental-design_1.html.
+   ============================================================ */
+
+/* ---- recessed inputs read as holes, not cards ---- */
+:root[data-theme='dark'] .fld__box,
+:root[data-theme='dark'] .otp input {
+  background: #0f1411;
+}
+
+/* ---- selected cards lift off the page instead of going white ---- */
+:root[data-theme='dark'] .cover__c.is-on,
+:root[data-theme='dark'] .extra.is-on,
+:root[data-theme='dark'] .pricetier.is-on {
+  background: #1f2823;
+}
+
+/* ---- car art panels ---- */
+:root[data-theme='dark'] .car__art {
+  background: linear-gradient(160deg, #232b26 0%, #161d19 100%);
+}
+:root[data-theme='dark'] .hero-car {
+  background: linear-gradient(155deg, #1f2823 0%, #121815 100%);
+}
+:root[data-theme='dark'] .hero-car::after {
+  background: repeating-linear-gradient(90deg, rgba(245, 246, 241, 0.14) 0 40px, transparent 40px 80px);
+}
+:root[data-theme='dark'] .car__art .carart,
+:root[data-theme='dark'] .hero-car .carart,
+:root[data-theme='dark'] .cat__art,
+:root[data-theme='dark'] .ticket__art .carart,
+:root[data-theme='dark'] .shelf__fleet .carart,
+:root[data-theme='dark'] .empty__art {
+  color: #93a79b;
+}
+
+/* ---- pine-800 sits too close to the card surface in the dark, so interactive
+        fills move up to pine-600 ---- */
+:root[data-theme='dark'] .btn--pine {
+  background: var(--pine-600);
+  border-color: var(--pine-600);
+}
+:root[data-theme='dark'] .btn--pine:hover:not(:disabled) {
+  background: var(--pine-700);
+  border-color: var(--pine-700);
+}
+:root[data-theme='dark'] .chip.is-on {
+  background: var(--pine-600);
+  border-color: var(--pine-600);
+}
+:root[data-theme='dark'] .check__box--on {
+  background: var(--pine-600);
+  border-color: var(--pine-600);
+}
+:root[data-theme='dark'] .steps__n--done,
+:root[data-theme='dark'] .panel__n {
+  background: var(--pine-600);
+}
+:root[data-theme='dark'] .gauge__seg--on,
+:root[data-theme='dark'] .slider__fill {
+  background: var(--sage);
+}
+:root[data-theme='dark'] .slider input[type='range']::-webkit-slider-thumb {
+  background: var(--bone-050);
+  border-color: var(--sage);
+}
+:root[data-theme='dark'] .slider input[type='range']::-moz-range-thumb {
+  background: var(--bone-050);
+  border-color: var(--sage);
+}
+:root[data-theme='dark'] .book__dot {
+  border-color: var(--sage);
+}
+:root[data-theme='dark'] .cover__c.is-on {
+  border-color: var(--pine-600);
+  box-shadow: 0 0 0 1px var(--pine-600);
+}
+:root[data-theme='dark'] .extra.is-on {
+  border-color: var(--pine-600);
+}
+:root[data-theme='dark'] .pricetier.is-on {
+  box-shadow: inset 0 0 0 1.5px var(--pine-600);
+}
+
+/* ---- tag text needs to come up off the dark ---- */
+:root[data-theme='dark'] .tag--sage {
+  background: rgba(127, 191, 162, 0.16);
+  color: #9bd4b5;
+}
+:root[data-theme='dark'] .tag--signal {
+  background: rgba(245, 208, 71, 0.16);
+  color: var(--signal);
+}
+:root[data-theme='dark'] .tag--pine {
+  background: var(--pine-600);
+}
+:root[data-theme='dark'] .verified {
+  background: rgba(127, 191, 162, 0.12);
+}
+:root[data-theme='dark'] .alert--ok {
+  background: rgba(127, 191, 162, 0.14);
+}
+:root[data-theme='dark'] .alert--err {
+  background: rgba(224, 120, 94, 0.14);
+}
+
+/* ---- the licence plate is a stamped metal object; it does not have a dark mode ---- */
+:root[data-theme='dark'] .plate {
+  background: #e9ebe4;
+  border-color: #070c0a;
+}
+:root[data-theme='dark'] .plate__no {
+  color: #151915;
+}
+:root[data-theme='dark'] .plate__band {
+  background: #0b1512;
+}
+
+/* ---- the ticket's punched-out corners have to match whatever is behind them ---- */
+:root[data-theme='dark'] .car:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+:root[data-theme='dark'] .search {
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.45);
+}
+
+/* ============================================================
+   THEME SWITCH
+   Three states: light, dark, and following the operating system.
+   ============================================================ */
+.themetog {
+  display: flex;
+  gap: 2px;
+  background: var(--bone-200);
+  border-radius: 99px;
+  padding: 3px;
+  flex: none;
+}
+.themetog button {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 0;
+  background: transparent;
+  color: var(--ink-45);
+  padding: 6px 11px;
+  border-radius: 99px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+.themetog button:hover {
+  color: var(--ink);
+}
+.themetog button.is-on {
+  background: var(--signal);
+  color: var(--on-signal);
+  font-weight: 600;
+}
+
+/* On the pine nav the track has to sit on the panel, not on the page. */
+.nav:not(.nav--light) .themetog,
+.side .themetog,
+.auth__aside .themetog {
+  background: rgba(233, 235, 228, 0.08);
+}
+.nav:not(.nav--light) .themetog button,
+.side .themetog button,
+.auth__aside .themetog button {
+  color: rgba(233, 235, 228, 0.5);
+}
+.nav:not(.nav--light) .themetog button:hover,
+.side .themetog button:hover,
+.auth__aside .themetog button:hover {
+  color: var(--on-pine);
+}
+.nav:not(.nav--light) .themetog button.is-on,
+.side .themetog button.is-on,
+.auth__aside .themetog button.is-on {
+  color: var(--on-signal);
+}
+
+/* The label is dropped on narrow screens; the icon carries it. */
+.themetog__label {
+  display: inline;
+}
+
+@media (max-width: 1100px) {
+  .themetog__label {
+    display: none;
+  }
+  .themetog button {
+    padding: 6px 8px;
+  }
+}
+
+.side .themetog {
+  width: 100%;
+  justify-content: space-between;
+}
+.side .themetog button {
+  flex: 1;
+  justify-content: center;
+}

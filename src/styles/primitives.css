@@ -1,0 +1,372 @@
+/* ============================================================
+   PRIMITIVES
+   The design file draws every state as a separate static box. Here each
+   one becomes a real :hover / :focus / :disabled / [aria-pressed] rule.
+   ============================================================ */
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  margin: 0;
+}
+.eyebrow--onDark { color: rgba(233, 235, 228, 0.5); }
+.eyebrow--signal { color: var(--signal-700); }
+
+.dh1 { font-family: var(--disp); font-variation-settings: 'wdth' 108; font-weight: 800; font-size: 66px; line-height: 0.94; letter-spacing: -0.03em; margin: 0; }
+.dh2 { font-family: var(--disp); font-variation-settings: 'wdth' 110; font-weight: 700; font-size: 38px; line-height: 1.04; letter-spacing: -0.02em; margin: 0; }
+.dh3 { font-family: var(--disp); font-variation-settings: 'wdth' 110; font-weight: 700; font-size: 24px; line-height: 1.12; letter-spacing: -0.01em; margin: 0; }
+.dh4 { font-family: var(--disp); font-variation-settings: 'wdth' 112; font-weight: 700; font-size: 17px; line-height: 1.2; margin: 0; }
+.lede { font-size: 17px; line-height: 1.55; color: var(--ink-70); margin: 0; }
+.small { font-size: 12.5px; line-height: 1.5; color: var(--ink-45); margin: 0; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 700px) {
+  .dh1 { font-size: 42px; }
+  .dh2 { font-size: 28px; }
+  .dh3 { font-size: 20px; }
+  .lede { font-size: 15px; }
+}
+
+/* ---------- odometer — the signature device ---------- */
+.odo { display: inline-flex; gap: 3px; align-items: stretch; }
+.odo__d {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 1;
+  padding: 9px 7px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #1b1e1a 0%, #2a2e29 48%, #131612 52%, #22261f 100%);
+  color: var(--on-pine);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  min-width: 24px;
+  text-align: center;
+}
+.odo__d--trip {
+  background: linear-gradient(180deg, #8c7207 0%, #c9a614 48%, #7a6205 52%, #a6870d 100%);
+  color: #181400;
+}
+.odo--sm .odo__d { font-size: 12px; padding: 5px 4px; min-width: 16px; border-radius: 2px; }
+.odo--lg .odo__d { font-size: 34px; padding: 14px 11px; min-width: 38px; border-radius: 4px; }
+
+/* Rolling drum. Every length is in em so one rule covers all three sizes: the window is
+   exactly one digit tall, and the strip travels one em per cell it passes. */
+.odo__d--roll { overflow: hidden; }
+.odo__win { display: block; height: 1em; overflow: hidden; }
+.odo__strip {
+  display: block;
+  /* Rest state is the bottom of the strip — the digit itself. The keyframe only supplies
+     the start, so with animations off the number is simply there. */
+  transform: translateY(calc(var(--roll) * -1em));
+  will-change: transform;
+  animation: km0-drum var(--spin, 1.4s) cubic-bezier(0.16, 0.84, 0.28, 1) both;
+}
+.odo__strip > span { display: block; height: 1em; line-height: 1; }
+
+@keyframes km0-drum {
+  from { transform: translateY(0); }
+}
+.odo__unit { font-family: var(--mono); font-size: 10px; align-self: flex-end; padding-bottom: 4px; margin-left: 6px; color: var(--ink-45); }
+
+@media (max-width: 700px) {
+  .odo--lg .odo__d { font-size: 22px; padding: 9px 7px; min-width: 26px; }
+}
+
+/* ---------- licence plate chip ---------- */
+.plate {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  border: 1.5px solid var(--ink);
+  background: var(--bone-050);
+  height: 24px;
+}
+.plate__band {
+  background: var(--pine-800);
+  color: var(--signal);
+  font-family: var(--mono);
+  font-size: 7px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.plate__no {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+  padding: 14px 22px;
+  border-radius: var(--r-s);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease;
+}
+.btn--signal { background: var(--signal); color: var(--on-signal); border-color: var(--signal); }
+.btn--signal:hover:not(:disabled) { background: var(--signal-700); border-color: var(--signal-700); }
+.btn--pine { background: var(--pine-800); color: var(--on-pine); border-color: var(--pine-800); }
+.btn--pine:hover:not(:disabled) { background: var(--pine-700); border-color: var(--pine-700); }
+.btn--outline { background: transparent; color: var(--ink); border-color: var(--ink-20); }
+.btn--outline:hover:not(:disabled) { border-color: var(--ink); background: rgba(21, 25, 21, 0.04); }
+.btn--onDark { background: transparent; color: var(--on-pine); border-color: rgba(233, 235, 228, 0.28); }
+.btn--onDark:hover:not(:disabled) { border-color: var(--bone-100); background: rgba(233, 235, 228, 0.08); }
+.btn--sm { padding: 9px 14px; font-size: 12.5px; border-radius: var(--r-xs); }
+.btn--lg { padding: 17px 30px; font-size: 15px; }
+.btn--block { width: 100%; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled,
+.btn[aria-disabled='true'] { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- form fields ---------- */
+.fld { display: block; }
+.fld__lab { display: block; font-size: 12px; font-weight: 600; color: var(--ink-70); margin-bottom: 6px; letter-spacing: 0.01em; }
+.fld__box {
+  background: var(--bone-050);
+  border: 1.5px solid var(--bone-300);
+  border-radius: var(--r-s);
+  padding: 13px 14px;
+  font-size: 14.5px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.fld__box--ph { color: var(--ink-45); }
+.fld__box--focus,
+.fld__box:focus-within { border-color: var(--pine-700); box-shadow: 0 0 0 3px rgba(25, 74, 62, 0.14); }
+.fld__box--err,
+.fld__box--err:focus-within { border-color: var(--brick); box-shadow: 0 0 0 3px rgba(177, 74, 51, 0.12); }
+.fld__hint { font-size: 11.5px; color: var(--ink-45); margin-top: 5px; display: block; }
+.fld__hint--err { color: var(--brick); font-weight: 500; }
+.fld__box .fld__val { flex: 1; }
+
+/* Native controls inherit the box rather than sitting inside a second border. */
+.fld__box input,
+.fld__box select,
+.fld__box textarea {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+}
+.fld__box input::placeholder { color: var(--ink-45); }
+.fld__box select { appearance: none; cursor: pointer; }
+.fld__box input[type='date'],
+.fld__box input[type='time'],
+.fld__box input[type='datetime-local'] { font-family: var(--mono); font-size: 13.5px; }
+.fld__reveal {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-70);
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ---------- tags ---------- */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 99px;
+  background: var(--bone-200);
+  color: var(--ink-70);
+}
+.tag--sage { background: rgba(111, 169, 143, 0.2); color: var(--verified); }
+.tag--signal { background: rgba(244, 203, 46, 0.24); color: #7a6205; }
+.tag--pine { background: var(--pine-800); color: var(--on-pine); }
+.tag--brick { background: rgba(177, 74, 51, 0.14); color: var(--brick); }
+
+/* ---------- icons & car art ---------- */
+.ico {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ico--sm { width: 14px; height: 14px; }
+.ico--lg { width: 22px; height: 22px; }
+.carart { width: 100%; height: auto; display: block; fill: currentColor; }
+.sprite { display: none; }
+
+/* ---------- fuel-gauge availability meter ---------- */
+.gauge { display: flex; align-items: center; gap: 6px; }
+.gauge__track { display: flex; gap: 2px; }
+.gauge__seg { width: 7px; height: 12px; border-radius: 1px; background: var(--bone-300); }
+.gauge__seg--on { background: var(--pine-700); }
+.gauge__seg--low { background: var(--brick); }
+.gauge__cap { font-family: var(--mono); font-size: 9px; color: var(--ink-45); }
+
+/* ---------- checkbox / radio ---------- */
+.check { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-70); cursor: pointer; }
+.check__box {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--ink-20);
+  background: var(--bone-050);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+.check__box--on { background: var(--pine-800); border-color: var(--pine-800); color: var(--signal); }
+.check input { position: absolute; opacity: 0; width: 0; height: 0; }
+.check input:focus-visible + .check__box { outline: 3px solid var(--signal); outline-offset: 2px; }
+
+/* ---------- chips ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  font-family: var(--body);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 99px;
+  border: 1.5px solid var(--bone-300);
+  color: var(--ink-70);
+  background: var(--bone-050);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.chip:hover { border-color: var(--ink-45); }
+.chip.is-on { background: var(--pine-800); border-color: var(--pine-800); color: var(--on-pine); }
+
+/* ---------- stepper (numeric +/-) ---------- */
+.stepper { display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--bone-300); border-radius: var(--r-xs); padding: 5px 10px; }
+.stepper__b {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-70);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 3px;
+}
+.stepper__b:hover:not(:disabled) { background: var(--bone-200); }
+.stepper__b:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ---------- progress meter ---------- */
+.progress { height: 6px; border-radius: 3px; background: rgba(233, 235, 228, 0.16); overflow: hidden; margin: 14px 0 8px; }
+.progress__f { height: 100%; background: var(--signal); display: block; }
+
+/* ---------- generic layout helpers ---------- */
+.row { display: flex; }
+.col { display: flex; flex-direction: column; }
+.divider { height: 1px; background: var(--bone-200); }
+.divider--onDark { height: 1px; background: rgba(233, 235, 228, 0.14); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+@media (max-width: 700px) {
+  .grid2 { grid-template-columns: 1fr; }
+}
+
+/* ---------- stepper rail (multi-step forms) ---------- */
+.steps { display: flex; align-items: center; gap: 0; margin-bottom: 34px; flex-wrap: wrap; }
+.steps__i { display: flex; align-items: center; gap: 9px; }
+.steps__n {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bone-200);
+  color: var(--ink-45);
+  flex: none;
+}
+.steps__n--done { background: var(--pine-800); color: var(--signal); }
+.steps__n--now { background: var(--signal); color: var(--ink); }
+.steps__t { font-size: 12.5px; font-weight: 600; color: var(--ink-45); }
+.steps__t--now { color: var(--ink); }
+.steps__bar { width: 34px; height: 1.5px; background: var(--bone-300); margin: 0 12px; }
+
+/* ---------- upload drop zone ---------- */
+.upload { border: 1.5px dashed var(--ink-20); border-radius: var(--r-m); background: var(--bone-050); padding: 22px; display: flex; gap: 14px; align-items: center; }
+.upload__ic { width: 44px; height: 44px; border-radius: var(--r-s); background: var(--pine-800); color: var(--signal); display: flex; align-items: center; justify-content: center; flex: none; }
+
+/* ---------- feedback ---------- */
+.alert {
+  border-radius: var(--r-s);
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.alert--err { background: rgba(177, 74, 51, 0.12); color: var(--brick); font-weight: 500; }
+.alert--ok { background: rgba(111, 169, 143, 0.18); color: var(--verified); font-weight: 500; }
+.alert--onDark { background: rgba(177, 74, 51, 0.26); color: #f2b9aa; }
+
+/* ---------- skeleton loading ---------- */
+@keyframes km0-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.skel { background: var(--bone-200); border-radius: var(--r-s); animation: km0-pulse 1.4s ease-in-out infinite; }
+.skel--onDark { background: rgba(233, 235, 228, 0.14); }
+
+/* ---------- empty state ---------- */
+.empty {
+  background: var(--bone-050);
+  border: 1px solid var(--bone-200);
+  border-radius: var(--r-m);
+  padding: 48px 32px;
+  text-align: center;
+}
+.empty__art { color: var(--bone-300); max-width: 200px; margin: 0 auto 18px; }

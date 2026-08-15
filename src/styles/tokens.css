@@ -1,0 +1,142 @@
+/* ============================================================
+   KM0 — DESIGN TOKENS
+   Ported verbatim from km0-rental-design.html so the built product
+   and the design file resolve to the same values.
+   ============================================================ */
+:root {
+  /* surfaces */
+  --pine-900: #0a1d18;
+  --pine-800: #102e27;
+  --pine-700: #194a3e;
+  --pine-600: #256554;
+  --bone-050: #f5f6f1;
+  --bone-100: #e9ebe4;
+  --bone-200: #dbded4;
+  --bone-300: #c5cabb;
+  /* ink */
+  --ink: #151915;
+  --ink-70: #4e564e;
+  --ink-45: #7c847b;
+  --ink-20: #b7bdb3;
+  /* signal */
+  --signal: #f4cb2e;
+  --signal-700: #c29d0e;
+  --sage: #6fa98f;
+  --brick: #b14a33;
+  /* semantic — identical in both themes, because the surface underneath does not invert.
+     Pine panels stay dark in the light theme and darker still in the dark one, so the text
+     sitting on them never flips. */
+  --on-pine: #f5f6f1;
+  --on-signal: #151915;
+  --verified: #2f6b54;
+  /* radii */
+  --r-xs: 4px;
+  --r-s: 8px;
+  --r-m: 12px;
+  --r-l: 18px;
+  --r-xl: 28px;
+  /* type */
+  --disp: 'Archivo', system-ui, -apple-system, sans-serif;
+  --body: 'Instrument Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'Martian Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /* layout */
+  --gutter: 72px;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --gutter: 20px;
+  }
+}
+
+/* ============================================================
+   DARK THEME
+   Surfaces invert; the plate, the odometer and the signal yellow stay exactly as
+   they are — they are physical objects.
+
+   `data-theme` is stamped on <html> by src/state/ThemeContext.jsx, and by the
+   inline script in index.html before first paint so the page never flashes.
+   ============================================================ */
+:root[data-theme='dark'] {
+  --pine-900: #070c0a;
+  --pine-800: #15201c;
+  --pine-700: #2c4e43;
+  --pine-600: #37705e;
+  --bone-050: #181e1a;
+  --bone-100: #0e1310;
+  --bone-200: #252d28;
+  --bone-300: #39423c;
+  --ink: #e8ebe4;
+  --ink-70: #a9b2a9;
+  --ink-45: #7c867d;
+  --ink-20: #3e463f;
+  --sage: #7fbfa2;
+  --brick: #e0785e;
+  --signal: #f5d047;
+  --verified: #8fd1b0;
+}
+
+/* Tells the browser to render native widgets — date and time pickers, scrollbars,
+   the caret — to match. Without it the search module's pickers stay stubbornly white. */
+:root {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bone-100);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+img {
+  max-width: 100%;
+}
+
+/* Screen-reader-only, for labels the design carries visually but a11y still needs. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

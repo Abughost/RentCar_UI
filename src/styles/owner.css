@@ -1,0 +1,160 @@
+/* ============================================================
+   HOST SIDE — owner-facing dashboard ("Hosting")
+
+   Ported from km0-rental-design_2.html, frames 10–17. Everything reachable through the
+   design system already exists in primitives.css / pages.css (car, plate, odo, steps, panel,
+   fld, chip, gauge, tbl, side__l …) — this file adds only what is new here: the two-column
+   shell, KPI tiles, the drawn city map, the earnings bar chart, ranked bars and the
+   day/week/month/year period switch.
+   ============================================================ */
+
+.hostshell { display: grid; grid-template-columns: 250px 1fr; flex: 1; }
+
+.hside { background: var(--pine-900); color: var(--on-pine); padding: 26px 20px; display: flex; flex-direction: column; }
+.hmain { background: var(--bone-100); padding: 30px var(--gutter) 64px; flex: 1; }
+
+/* renting / hosting switch, top of the sidebar */
+.modesw { display: flex; background: rgba(233, 235, 228, 0.09); border-radius: var(--r-s); padding: 3px; margin: 18px 0 20px; }
+.modesw__b {
+  flex: 1; text-align: center; font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+  padding: 8px 0; border-radius: 6px; color: rgba(233, 235, 228, 0.5); text-decoration: none;
+}
+.modesw__b.is-on { background: var(--signal); color: var(--on-signal); font-weight: 600; }
+
+.hhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+
+/* day / week / month / year filter */
+.period { display: inline-flex; background: var(--bone-050); border: 1.5px solid var(--bone-300); border-radius: var(--r-s); padding: 3px; }
+.period__b {
+  font-size: 12.5px; font-weight: 600; color: var(--ink-45); padding: 8px 16px; border-radius: 5px;
+  white-space: nowrap; border: 0; background: none; cursor: pointer; font-family: inherit;
+}
+.period__b.is-on { background: var(--pine-800); color: var(--on-pine); }
+:root[data-theme='dark'] .period__b.is-on { background: var(--pine-600); }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.kpi { background: var(--bone-050); border: 1px solid var(--bone-200); border-radius: var(--r-m); padding: 18px 20px; }
+.kpi__k { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-45); }
+.kpi__v { font-family: var(--mono); font-size: 27px; font-weight: 600; margin: 9px 0 5px; letter-spacing: -0.02em; }
+.kpi__d { font-size: 11.5px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.up { color: var(--verified); font-weight: 600; }
+.down { color: var(--brick); font-weight: 600; }
+
+/* drawn city map with pins */
+.map { position: relative; background: var(--bone-200); border-radius: var(--r-m); overflow: hidden; border: 1px solid var(--bone-300); }
+.map__svg { display: block; width: 100%; height: auto; }
+.map__road { stroke: var(--bone-100); fill: none; stroke-linecap: round; }
+.map__block { fill: var(--bone-300); opacity: 0.5; }
+.map__water { fill: var(--pine-700); opacity: 0.28; }
+.map__park { fill: var(--sage); opacity: 0.3; }
+.map__pin { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.map__dot {
+  width: 30px; height: 30px; border-radius: 50% 50% 50% 2px; transform: rotate(-45deg);
+  background: var(--pine-800); border: 2px solid var(--bone-050); display: flex; align-items: center;
+  justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+.map__dot svg { transform: rotate(45deg); color: var(--on-pine); }
+.map__dot--live { background: var(--signal); border-color: var(--ink); }
+.map__dot--live svg { color: var(--on-signal); }
+.map__dot--off { background: var(--bone-300); }
+.map__dot--off svg { color: var(--ink-70); }
+.map__lab {
+  background: var(--bone-050); border: 1px solid var(--bone-300); border-radius: 99px; padding: 2px 8px;
+  font-family: var(--mono); font-size: 9px; font-weight: 600; white-space: nowrap; color: var(--ink);
+}
+.map__hot {
+  position: absolute; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(244, 203, 46, 0.55) 0%, rgba(244, 203, 46, 0.16) 55%, transparent 72%);
+}
+.map__legend {
+  position: absolute; left: 14px; bottom: 14px; background: var(--bone-050); border: 1px solid var(--bone-300);
+  border-radius: var(--r-s); padding: 10px 12px; display: flex; flex-direction: column; gap: 7px;
+}
+.map__lg { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--ink-70); }
+.map__sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.map__ctl { position: absolute; right: 14px; top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.map__cb {
+  width: 32px; height: 32px; background: var(--bone-050); border: 1px solid var(--bone-300); border-radius: var(--r-s);
+  display: flex; align-items: center; justify-content: center; color: var(--ink-70); cursor: pointer;
+}
+
+/* earnings bar chart */
+.chart { background: var(--bone-050); border: 1px solid var(--bone-200); border-radius: var(--r-m); padding: 22px 24px; }
+.chart__plot { display: flex; align-items: flex-end; gap: 3px; height: 180px; margin: 20px 0 8px; }
+.chart__col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; height: 100%; }
+.chart__b { background: var(--pine-700); border-radius: 2px 2px 0 0; width: 100%; }
+.chart__b--now { background: var(--signal); }
+.chart__b--idle { background: var(--bone-300); border-radius: 0; }
+.chart__x { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--ink-45); padding-top: 9px; border-top: 1px solid var(--bone-200); }
+
+/* ranked bars — top locations, top cars */
+.rank { display: flex; flex-direction: column; gap: 13px; }
+.rank__r { display: grid; grid-template-columns: 20px 1fr 60px; gap: 12px; align-items: center; }
+.rank__n { font-family: var(--mono); font-size: 10px; color: var(--ink-45); }
+.rank__b { height: 8px; border-radius: 4px; background: var(--bone-200); overflow: hidden; }
+.rank__f { height: 100%; background: var(--pine-700); border-radius: 4px; display: block; }
+.rank__f--top { background: var(--signal); }
+.rank__v { font-family: var(--mono); font-size: 11px; text-align: right; color: var(--ink-70); }
+
+/* status dot — a car's current state at a glance */
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.st__d { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.st--live { color: var(--signal-700); }
+.st--live .st__d { background: var(--signal); }
+:root[data-theme='dark'] .st--live { color: var(--signal); }
+.st--free { color: var(--verified); }
+.st--free .st__d { background: var(--verified); }
+.st--off { color: var(--ink-45); }
+.st--off .st__d { background: var(--ink-45); }
+.st--due { color: var(--brick); }
+.st--due .st__d { background: var(--brick); }
+
+/* list-a-car flow */
+.addwrap { display: grid; grid-template-columns: 1fr 372px; gap: 34px; padding: 26px var(--gutter) 72px; align-items: start; }
+.photos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.photo {
+  aspect-ratio: 4 / 3; border-radius: var(--r-s); background: var(--bone-200); border: 1.5px dashed var(--bone-300);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--ink-45);
+  position: relative; cursor: pointer;
+}
+.photo--filled { background: linear-gradient(160deg, var(--bone-200), var(--bone-300)); border-style: solid; color: var(--pine-700); }
+.photo--main { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; }
+.photo__tag {
+  position: absolute; top: 8px; left: 8px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.06em;
+  background: var(--bone-050); padding: 2px 6px; border-radius: 99px; color: var(--ink-70);
+}
+.pricebox { background: var(--pine-800); color: var(--on-pine); border-radius: var(--r-m); padding: 22px 24px; }
+:root[data-theme='dark'] .pricebox { background: var(--pine-700); }
+.tips { background: var(--bone-050); border: 1px solid var(--bone-200); border-radius: var(--r-m); padding: 20px 22px; }
+.tip { display: flex; gap: 10px; font-size: 13px; color: var(--ink-70); line-height: 1.5; margin-bottom: 12px; }
+.tip:last-child { margin-bottom: 0; }
+
+/* availability calendar — grey stays yours, signal is booked, pine is open to rent */
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal__h { font-family: var(--mono); font-size: 8.5px; color: var(--ink-45); text-align: center; padding-bottom: 4px; }
+.cal__d {
+  aspect-ratio: 1; border-radius: 5px; background: var(--bone-200); display: flex; align-items: center;
+  justify-content: center; font-family: var(--mono); font-size: 10px; color: var(--ink-70); cursor: pointer; border: 0;
+}
+.cal__d--on { background: var(--pine-700); color: var(--on-pine); }
+.cal__d--booked { background: var(--signal); color: var(--on-signal); font-weight: 600; cursor: default; }
+.cal__d--off { background: transparent; color: var(--ink-20); visibility: hidden; }
+
+/* ---- responsive: sidebar becomes a horizontal-scroll strip, same break as .acct ---- */
+@media (max-width: 1000px) {
+  .hostshell { grid-template-columns: 1fr; }
+  .hside { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 16px var(--gutter); }
+  .hside .modesw { width: 160px; margin: 0; order: 2; }
+  .hside__nav { display: flex; gap: 6px; overflow-x: auto; order: 4; width: 100%; padding-bottom: 2px; }
+  .hside__nav .side__l { width: auto; white-space: nowrap; margin-bottom: 0; }
+  .hside__foot { order: 3; margin-left: auto; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  .hmain { padding: 22px var(--gutter) 90px; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .addwrap { grid-template-columns: 1fr; padding: 22px var(--gutter) 48px; }
+  .photos { grid-template-columns: repeat(2, 1fr); }
+  .photo--main { grid-column: span 2; grid-row: span 1; aspect-ratio: 4 / 3; }
+}
