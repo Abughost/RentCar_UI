@@ -72,6 +72,38 @@
 }
 .odo__unit { font-family: var(--mono); font-size: 10px; align-self: flex-end; padding-bottom: 4px; margin-left: 6px; color: var(--ink-45); }
 
+/* ---------- editable odometer ---------- */
+.odoEdit__trigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: text;
+  display: inline-flex;
+  border-radius: 3px;
+}
+.odoEdit__trigger:hover .odo__d,
+.odoEdit__trigger:focus-visible .odo__d { box-shadow: inset 0 0 0 1.5px var(--signal); }
+/* Matches .odo__d as closely as it can while still being a real, typeable input — the point
+   is that clicking to edit shouldn't jolt the eye. */
+.odoEdit {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 1;
+  padding: 9px 7px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #1b1e1a 0%, #2a2e29 48%, #131612 52%, #22261f 100%);
+  color: var(--on-pine);
+  border: 1.5px solid var(--signal);
+  min-width: 44px;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.odoEdit::-webkit-outer-spin-button,
+.odoEdit::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.odoEdit--sm { font-size: 12px; padding: 5px 4px; min-width: 30px; }
+
 @media (max-width: 700px) {
   .odo--lg .odo__d { font-size: 22px; padding: 9px 7px; min-width: 26px; }
 }

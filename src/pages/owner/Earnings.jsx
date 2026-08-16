@@ -1,38 +1,32 @@
 import { useMemo, useState } from 'react'
-import { Alert, Button, Icon, Spinner } from '../../components/primitives'
+import { Alert, Spinner } from '../../components/primitives'
 import { carTitle } from '../../lib/fleet'
-import { HOST_FEE_RATE, rankRows } from '../../lib/owner'
+import { earnedInWindow, HOST_FEE_RATE, rankRows } from '../../lib/owner'
 import { money } from '../../lib/pricing'
-import { useAuth } from '../../state/AuthContext'
 import { PeriodSwitch } from './Overview'
 import { useOwner } from './useOwnerFleet'
 
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-
-/** Frame 15 — year view. Every deduction named, so a payout is never a mystery. */
+/** Frame 15 — every figure is a real sum over `Rental.total_price`. Payouts are always
+ * "pending": nothing in this app talks to a bank, so nothing here claims to have been paid. */
 export default function Earnings() {
-  const { user } = useAuth()
-  const { fleet, payouts, loading, error } = useOwner()
+  const { fleet, rentals, payouts, loading, error } = useOwner()
   const [period, setPeriod] = useState('year')
 
-  const monthEarned = fleet.reduce((sum, c) => sum + c.monthEarned, 0)
-  const grossYear = Math.round((monthEarned / (1 - HOST_FEE_RATE)) * 8.3)
-  const fee = Math.round(grossYear * HOST_FEE_RATE)
-  const cleaning = Math.round(grossYear * 0.016)
-  const paidYtd = grossYear - fee - cleaning
-  const nextPayout = payouts[0]?.paidOut || 0
+  const yearStart = useMemo(() => {
+    const d = new Date()
+    d.setMonth(0, 1)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+  const now = useMemo(() => new Date(), [])
 
-  const monthBars = useMemo(() => {
-    const now = new Date().getMonth()
-    return MONTHS.map((label, i) => {
-      const base = 30 + Math.round(50 * Math.abs(Math.sin(i * 1.7 + fleet.length)))
-      return { label, height: i <= now ? base : Math.round(base * 0.4), now: i === now, future: i > now }
-    })
-  }, [fleet.length])
+  const earnedYtd = earnedInWindow(rentals, yearStart, now)
+  const grossYtd = earnedYtd / (1 - HOST_FEE_RATE)
+  const feeYtd = grossYtd - earnedYtd
 
   const byCarRanked = rankRows(
     fleet,
-    (c) => c.monthEarned * 8,
+    (c) => c.rentals.filter((r) => r.status !== 'cancelled').reduce((sum, r) => sum + r.total_price * 0.8, 0),
     (c) => c,
   )
 
@@ -47,9 +41,6 @@ export default function Earnings() {
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <PeriodSwitch value={period} onChange={setPeriod} />
-          <Button size="sm" icon="doc">
-            Download statement
-          </Button>
         </div>
       </div>
 
@@ -78,128 +69,81 @@ export default function Earnings() {
           >
             <div>
               <p className="eyebrow eyebrow--onDark" style={{ margin: '0 0 14px' }}>
-                Paid to you this year so far
+                Earned this year so far
               </p>
               <div className="num" style={{ fontSize: 40, fontWeight: 600, letterSpacing: '-.02em' }}>
-                {money(paidYtd, { cents: false })}
+                {money(earnedYtd, { cents: false })}
               </div>
               <p style={{ margin: '16px 0 0', fontSize: 14, color: 'rgba(233,235,228,.6)' }}>
-                Across {fleet.length} car{fleet.length === 1 ? '' : 's'}. At this rate the fleet clears
-                about {money(paidYtd * 1.45, { cents: false })} by December.
+                Across {fleet.length} car{fleet.length === 1 ? '' : 's'}. Payouts below are estimates
+                — nothing has been transferred yet.
               </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 30px' }}>
-              <Figure label="Gross rentals" value={money(grossYear, { cents: false })} />
-              <Figure label="KM0 fee 20%" value={`−${money(fee, { cents: false })}`} />
-              <Figure label="Cleaning & damage" value={`−${money(cleaning, { cents: false })}`} />
-              <Figure label="Next payout · Mon" value={money(nextPayout, { cents: false })} highlight />
+              <Figure label="Gross rentals" value={money(grossYtd, { cents: false })} />
+              <Figure label="KM0 fee 20%" value={`−${money(feeYtd, { cents: false })}`} />
+              <Figure label="Est. next payout" value={money(payouts[0]?.paidOut || 0, { cents: false })} highlight />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 18, marginBottom: 20 }}>
-            <div className="chart">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                <div>
-                  <p className="eyebrow" style={{ margin: '0 0 6px' }}>
-                    Month by month
-                  </p>
-                  <div className="num" style={{ fontSize: 22, fontWeight: 600 }}>
-                    {new Date().getFullYear()}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 14 }}>
-                  <span className="map__lg">
-                    <span className="map__sw" style={{ background: 'var(--pine-700)' }} />
-                    Paid out
-                  </span>
-                  <span className="map__lg">
-                    <span className="map__sw" style={{ background: 'var(--signal)' }} />
-                    This month
-                  </span>
-                </div>
-              </div>
-              <div className="chart__plot" style={{ gap: 10 }}>
-                {monthBars.map((bar) => (
-                  <div className="chart__col" key={bar.label}>
-                    <span
-                      className={`chart__b${bar.now ? ' chart__b--now' : ''}`}
-                      style={{ height: `${bar.height}%`, opacity: bar.future ? 0.28 : 1 }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="chart__x">
-                {MONTHS.map((m) => (
-                  <span key={m}>{m}</span>
-                ))}
-              </div>
-            </div>
-
-            <div className="chart">
-              <p className="eyebrow" style={{ margin: '0 0 18px' }}>
-                Which car earns what
-              </p>
-              {fleet.length === 0 ? (
-                <p className="small">List a car to see it ranked here.</p>
-              ) : (
-                <div className="rank">
-                  {byCarRanked.map((row) => (
-                    <div className="rank__r" key={row.car.id}>
-                      <span className="rank__n">{String(row.rank).padStart(2, '0')}</span>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                          {carTitle(row.car.car)}{' '}
-                          <span className="small" style={{ fontWeight: 400 }}>
-                            · {row.car.plate}
-                          </span>
-                        </div>
-                        <div className="rank__b">
-                          <span className={`rank__f${row.rank === 1 ? ' rank__f--top' : ''}`} style={{ width: `${row.pct}%` }} />
-                        </div>
+          <div className="chart" style={{ marginBottom: 20 }}>
+            <p className="eyebrow" style={{ margin: '0 0 18px' }}>
+              Which car earns what
+            </p>
+            {fleet.length === 0 ? (
+              <p className="small">List a car to see it ranked here.</p>
+            ) : (
+              <div className="rank">
+                {byCarRanked.map((row) => (
+                  <div className="rank__r" key={row.car.id}>
+                    <span className="rank__n">{String(row.rank).padStart(2, '0')}</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                        {carTitle(row.car.car)}{' '}
+                        <span className="small" style={{ fontWeight: 400 }}>
+                          · {row.car.plate}
+                        </span>
                       </div>
-                      <span className="rank__v">{money(row.value, { cents: false })}</span>
+                      <div className="rank__b">
+                        <span className={`rank__f${row.rank === 1 ? ' rank__f--top' : ''}`} style={{ width: `${row.pct}%` }} />
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <span className="rank__v">{money(row.value, { cents: false })}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h2 className="dh3">Payouts</h2>
+            <h2 className="dh3">Estimated payouts</h2>
           </div>
           <div className="tblwrap">
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Period</th>
+                  <th>Week</th>
                   <th>Rentals</th>
                   <th>Gross</th>
                   <th>KM0 fee</th>
-                  <th>Adjustments</th>
-                  <th>Paid out</th>
+                  <th>Est. payout</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {payouts.map((p) => (
                   <tr key={p.id}>
-                    <td className="num">{p.date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</td>
                     <td>{p.rangeLabel}</td>
                     <td className="num">{p.rentals}</td>
                     <td className="num">{money(p.gross, { cents: false })}</td>
                     <td className="num">−{money(p.fee, { cents: false })}</td>
                     <td className="num">
-                      {p.adjustments === 0 ? '$0.00' : `${p.adjustments > 0 ? '+' : '−'}${money(Math.abs(p.adjustments), { cents: false })}`}
-                    </td>
-                    <td className="num">
                       <b>{money(p.paidOut, { cents: false })}</b>
                     </td>
                     <td>
-                      <span className={`st st--${p.status === 'paid' ? 'free' : 'live'}`}>
+                      <span className="st st--due">
                         <span className="st__d" />
-                        {p.status === 'paid' ? 'PAID' : 'SCHEDULED'}
+                        PENDING
                       </span>
                     </td>
                   </tr>
@@ -208,8 +152,8 @@ export default function Earnings() {
             </table>
           </div>
           <p className="small" style={{ marginTop: 12 }}>
-            Adjustments are extra kilometres and cleaning billed to the renter, or damage repaid to
-            them.
+            KM0 doesn't settle payouts automatically yet — every row here is a real total,
+            waiting to be paid out.
           </p>
         </>
       )}

@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { fullName, initials, useAuth } from '../state/AuthContext'
+import ModeSwitch from './ModeSwitch'
 import ThemeToggle from './ThemeToggle'
 import { Button, Icon } from './primitives'
 
 const LINKS = [
-  { to: '/cars', label: 'Find a car' },
-  { to: '/owner', label: 'List your car' },
   { to: '/stations', label: 'Stations' },
   { to: '/long-term', label: 'Long term' },
   { to: '/business', label: 'Business' },
@@ -21,6 +20,7 @@ export default function Nav({ tone = 'light', minimal = false, notice }) {
   const { user, isAuthenticated, signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
+  const { pathname } = useLocation()
 
   function handleSignOut() {
     signOut()
@@ -29,6 +29,13 @@ export default function Nav({ tone = 'light', minimal = false, notice }) {
 
   return (
     <nav className={`nav${tone === 'light' ? ' nav--light' : ''}`}>
+      {pathname !== '/' && (
+        <button type="button" className="nav__back" onClick={() => navigate(-1)}>
+          <Icon name="chev" size="sm" style={{ transform: 'rotate(180deg)' }} />
+          Back
+        </button>
+      )}
+
       <Link to="/" className="nav__logo">
         KM<em>0</em>
       </Link>
@@ -49,6 +56,17 @@ export default function Nav({ tone = 'light', minimal = false, notice }) {
             <Icon name={open ? 'x' : 'menu'} />
           </button>
           <span className={`nav__links${open ? ' is-open' : ''}`}>
+            {isAuthenticated ? (
+              <ModeSwitch onNavigate={() => setOpen(false)} />
+            ) : (
+              <NavLink
+                to="/cars"
+                className={({ isActive }) => (isActive ? 'is-on' : undefined)}
+                onClick={() => setOpen(false)}
+              >
+                Find a car
+              </NavLink>
+            )}
             {LINKS.map((link) => (
               <NavLink
                 key={link.to}
@@ -64,12 +82,9 @@ export default function Nav({ tone = 'light', minimal = false, notice }) {
       )}
 
       <span className="nav__right">
-        <ThemeToggle />
+        <ThemeToggle compact />
         {isAuthenticated ? (
           <>
-            <Link to="/account" className="nav__signin">
-              My trips
-            </Link>
             <Link to="/account" className="avatar" title={fullName(user)} aria-label="Account">
               {initials(user)}
             </Link>

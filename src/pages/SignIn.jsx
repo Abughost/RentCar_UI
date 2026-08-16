@@ -50,7 +50,7 @@ export default function SignIn() {
           <Link to="/" className="auth__logo">
             KM<em>0</em>
           </Link>
-          <ThemeToggle />
+          <ThemeToggle compact />
         </div>
         <div>
           <p className="eyebrow eyebrow--onDark" style={{ margin: '0 0 16px' }}>

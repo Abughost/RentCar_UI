@@ -28,6 +28,14 @@ export function bodyShape(car) {
   return hit ? hit.shape : 'sedan'
 }
 
+const SHAPE_LABEL = { van: 'Van', suv: 'SUV', hatch: 'Hatchback', sedan: 'Sedan' }
+
+/** Display name for a `bodyShape()` result — CarDetailModelSerializer doesn't expose
+ * `category`, so this is what the no-photo badge captions itself with. */
+export function shapeLabel(shape) {
+  return SHAPE_LABEL[shape] || 'Sedan'
+}
+
 /* ------------------------------------------------------------------ plate */
 
 const LETTERS = 'ABCDEFGHKLMNPRSTVXZ'

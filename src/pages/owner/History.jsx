@@ -1,24 +1,21 @@
 import { useMemo, useState } from 'react'
-import { Alert, Button, Spinner, Tag } from '../../components/primitives'
+import { Alert, Button, Spinner } from '../../components/primitives'
 import { carTitle } from '../../lib/fleet'
 import { formatDateRange, historyRows } from '../../lib/owner'
 import { money } from '../../lib/pricing'
-import { useAuth } from '../../state/AuthContext'
 import { PeriodSwitch } from './Overview'
 import { useOwner } from './useOwnerFleet'
 
-/** Frame 16 — one row per completed rental, odometer at both ends. */
+/** Frame 16 — one row per completed rental, from real bookings on the host's own cars. */
 export default function History() {
-  const { user } = useAuth()
-  const { fleet, loading, error } = useOwner()
+  const { fleet, rentals, loading, error } = useOwner()
   const [period, setPeriod] = useState('week')
 
-  const rows = useMemo(() => historyRows(fleet, user?.id || 'host', 8), [fleet, user?.id])
+  const carById = useMemo(() => new Map(fleet.map((c) => [c.id, c.car])), [fleet])
+  const rows = useMemo(() => historyRows(rentals), [rentals])
 
-  const totalKm = rows.reduce((sum, r) => sum + r.km, 0)
   const totalEarned = rows.reduce((sum, r) => sum + r.earned, 0)
-  const avgDays = rows.length ? (rows.reduce((sum, r) => sum + (r.end - r.start) / 86400000, 0) / rows.length).toFixed(1) : 0
-  const late = rows.filter((r) => r.late).length
+  const avgDays = rows.length ? (rows.reduce((sum, r) => sum + r.days, 0) / rows.length).toFixed(1) : 0
 
   return (
     <>
@@ -31,7 +28,6 @@ export default function History() {
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <PeriodSwitch value={period} onChange={setPeriod} />
-          <Button size="sm">Export CSV</Button>
         </div>
       </div>
 
@@ -47,28 +43,18 @@ export default function History() {
         <p className="small">Nothing rented yet — completed trips will land here.</p>
       ) : (
         <>
-          <div className="kpis" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <div className="kpis" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
             <div className="kpi">
-              <div className="kpi__k">Rentals shown</div>
+              <div className="kpi__k">Completed rentals</div>
               <div className="kpi__v">{rows.length}</div>
-            </div>
-            <div className="kpi">
-              <div className="kpi__k">Kilometres</div>
-              <div className="kpi__v">{totalKm.toLocaleString('en-US')}</div>
-              <div className="kpi__d">
-                <span style={{ color: 'var(--ink-45)' }}>{Math.round(totalKm / rows.length)} km average trip</span>
-              </div>
             </div>
             <div className="kpi">
               <div className="kpi__k">Average rental</div>
               <div className="kpi__v">{avgDays}d</div>
             </div>
             <div className="kpi">
-              <div className="kpi__k">Returned late</div>
-              <div className="kpi__v">{late}</div>
-              <div className="kpi__d">
-                <span style={{ color: 'var(--ink-45)' }}>of {rows.length} rentals</span>
-              </div>
+              <div className="kpi__k">Total earned</div>
+              <div className="kpi__v">{money(totalEarned, { cents: false })}</div>
             </div>
           </div>
 
@@ -80,9 +66,7 @@ export default function History() {
                   <th>Car</th>
                   <th>Renter</th>
                   <th>Dates</th>
-                  <th>Odometer</th>
-                  <th>Distance</th>
-                  <th>Rating</th>
+                  <th>Length</th>
                   <th>You earned</th>
                 </tr>
               </thead>
@@ -91,22 +75,12 @@ export default function History() {
                   <tr key={r.id}>
                     <td className="num">{r.id}</td>
                     <td>
-                      <b>{carTitle(r.car.car)}</b>
-                      <br />
-                      <span className="small num">{r.car.plate}</span>
+                      <b>{carById.has(r.rental.car) ? carTitle(carById.get(r.rental.car)) : '—'}</b>
                     </td>
                     <td>{r.renter}</td>
                     <td className="num">{formatDateRange(r.start, r.end)}</td>
                     <td className="num">
-                      {r.odoStart.toLocaleString('en-US')} → {r.odoEnd.toLocaleString('en-US')}
-                    </td>
-                    <td className="num">{r.km.toLocaleString('en-US')} km</td>
-                    <td>
-                      {r.late ? (
-                        <Tag tone="brick">Returned late</Tag>
-                      ) : (
-                        <span className="num">{r.rating} ★</span>
-                      )}
+                      {r.days} day{r.days === 1 ? '' : 's'}
                     </td>
                     <td className="num">
                       <b>{money(r.earned)}</b>
@@ -117,7 +91,7 @@ export default function History() {
             </table>
           </div>
           <p className="small" style={{ marginTop: 12 }}>
-            {money(totalEarned)} paid out across {rows.length} rentals shown here.
+            {money(totalEarned)} earned across {rows.length} rentals shown here.
           </p>
         </>
       )}

@@ -19,6 +19,7 @@ import OwnerComingSoon from './pages/owner/OwnerComingSoon'
 import OwnerLayout from './pages/owner/OwnerLayout'
 import Overview from './pages/owner/Overview'
 import Register from './pages/Register'
+import RentingLayout from './pages/RentingLayout'
 import SignIn from './pages/SignIn'
 import { Business, Help, LongTerm, NotFound } from './pages/Static'
 import Stations from './pages/Stations'
@@ -48,8 +49,29 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/register/:step" element={<Register />} />
 
-        {/* 04 · 05 */}
-        <Route path="/cars" element={<Cars />} />
+        {/* 04 · 08 — Find a car and the account sections share one sidebar shell, so the
+            "renting" side of the mode switch never loses its own nav the way /owner used to. */}
+        <Route element={<RentingLayout />}>
+          <Route path="/cars" element={<Cars />} />
+          <Route
+            path="/account"
+            element={
+              <RequireAuth>
+                <Account />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/account/:section"
+            element={
+              <RequireAuth>
+                <Account />
+              </RequireAuth>
+            }
+          />
+        </Route>
+
+        {/* 05 */}
         <Route path="/cars/:id" element={<CarDetail />} />
 
         {/* 06 — needs a UserProfile, or the rental POST is refused */}
@@ -68,24 +90,6 @@ export default function App() {
           element={
             <RequireAuth>
               <Confirmed />
-            </RequireAuth>
-          }
-        />
-
-        {/* 08 */}
-        <Route
-          path="/account"
-          element={
-            <RequireAuth>
-              <Account />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/account/:section"
-          element={
-            <RequireAuth>
-              <Account />
             </RequireAuth>
           }
         />

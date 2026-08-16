@@ -7,6 +7,9 @@ import { Odometer } from './primitives'
  * chosen car — same skeleton, so one component renders both via `head`.
  */
 export default function BookingRail({ head, when, quote, footer, children }) {
+  // Whole units, like the per-day drum — the odometer metaphor doesn't carry cents.
+  const totalValue = String(Math.round(quote.total))
+
   return (
     <aside className="book">
       {head}
@@ -72,12 +75,17 @@ export default function BookingRail({ head, when, quote, footer, children }) {
 
       <div className="book__tot">
         <div>
-          <div className="eyebrow">Total</div>
-          <div className="small" style={{ marginTop: 3 }}>
+          <div className="eyebrow eyebrow--onDark">Total</div>
+          <div className="small book__note" style={{ marginTop: 3 }}>
             Pay at the counter
           </div>
         </div>
-        <div className="book__totV">{money(quote.total)}</div>
+        {/* `roll` only fires for this instance's first paint (see Odometer in primitives.jsx)
+            — after that, a day-count change or a swapped cover just ticks the digits over
+            like a real counter, not a fresh spin-down every time. A genuine reveal (landing
+            on a different car) comes from BookingRail itself being remounted, keyed by the
+            car in CarDetail.jsx — not from anything in here. */}
+        <Odometer value={totalValue} pad={4} unit="USD" roll />
       </div>
 
       <div className="book__cta">{footer}</div>
@@ -86,18 +94,23 @@ export default function BookingRail({ head, when, quote, footer, children }) {
   )
 }
 
-/** Frame 05's rail head: the per-day rate on the odometer. */
+/**
+ * Frame 05's rail head: the per-day rate on the odometer.
+ *
+ * `roll` reuses the hero's drum reveal — same mechanism as the "000000" on the home page —
+ * but here the rest state is the car's real per-day rate, never zero, and it only plays for
+ * this instance's first paint (see Odometer in primitives.jsx). A day-count change re-prices
+ * the rate and the digits just tick over to match — the reveal itself belongs to landing on
+ * the car, and CarDetail.jsx is what replays it by keying <BookingRail> on the car's id.
+ */
 export function RateHead({ perDay, note }) {
+  const value = perDay != null ? String(Math.round(perDay)) : '0'
   return (
     <div className="book__top">
       <p className="eyebrow eyebrow--onDark" style={{ margin: '0 0 10px' }}>
         Your price
       </p>
-      <Odometer
-        value={perDay != null ? String(Math.round(perDay)) : '0'}
-        pad={3}
-        unit="USD / DAY"
-      />
+      <Odometer value={value} pad={3} unit="USD / DAY" roll />
       {note && <p className="book__note">{note}</p>}
     </div>
   )

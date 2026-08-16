@@ -1,28 +1,34 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Icon, Spinner } from '../../components/primitives'
-import { chartSeries, fleetCount, PERIODS, scaleToPeriod } from '../../lib/owner'
+import {
+  chartSeries, daysRentedInWindow, earnedInWindow, fleetCount, PERIODS, renterName,
+} from '../../lib/owner'
 import { money } from '../../lib/pricing'
-import { useAuth } from '../../state/AuthContext'
-import CityMap from './CityMap'
 import { useOwner } from './useOwnerFleet'
 
-/** Frame 12 — money and location, in that order. */
+/** Frame 12 — money, in real numbers, then where the fleet stands. */
 export default function Overview() {
-  const { user } = useAuth()
-  const { fleet, loading, error } = useOwner()
+  const { fleet, rentals, loading, error } = useOwner()
   const [period, setPeriod] = useState('month')
 
-  const monthEarned = fleet.reduce((sum, c) => sum + c.monthEarned, 0)
-  const daysRented = fleet.reduce((sum, c) => sum + c.daysRented, 0)
-  const daysAvailable = fleet.reduce((sum, c) => sum + c.daysAvailable, 0)
-  const kmDriven = fleet.reduce((sum, c) => sum + c.kmDriven, 0)
-  const avgPerDay = daysRented > 0 ? monthEarned / daysRented : 0
+  const windowDays = PERIODS.find((p) => p.key === period)?.days || 30
+  const windowEnd = useMemo(() => new Date(), [])
+  const windowStart = useMemo(() => {
+    const d = new Date(windowEnd)
+    d.setDate(d.getDate() - windowDays)
+    return d
+  }, [windowEnd, windowDays])
+
+  const earned = earnedInWindow(rentals, windowStart, windowEnd)
+  const daysRented = daysRentedInWindow(rentals, windowStart, windowEnd)
+  const daysAvailable = fleet.length * windowDays
+  const avgPerDay = daysRented > 0 ? earned / daysRented : 0
   const onRent = fleetCount(fleet, 'on_rent')
 
-  const chart = useMemo(() => chartSeries(user?.id || 'host', 20), [user?.id])
-  const grossThisMonth = monthEarned / 0.8
-  const km0Fee = grossThisMonth - monthEarned
+  const chart = useMemo(() => chartSeries(rentals, 20), [rentals])
+  const grossThisPeriod = earned / 0.8
+  const km0Fee = grossThisPeriod - earned
 
   return (
     <>
@@ -63,11 +69,7 @@ export default function Overview() {
           <div className="kpis">
             <div className="kpi">
               <div className="kpi__k">Earned this {period}</div>
-              <div className="kpi__v">{money(scaleToPeriod(monthEarned, period), { cents: false })}</div>
-              <div className="kpi__d">
-                <span className="up">↑ 18%</span>
-                <span style={{ color: 'var(--ink-45)' }}>vs last {period}</span>
-              </div>
+              <div className="kpi__v">{money(earned, { cents: false })}</div>
             </div>
             <div className="kpi">
               <div className="kpi__k">Days rented</div>
@@ -79,20 +81,15 @@ export default function Overview() {
               </div>
             </div>
             <div className="kpi">
-              <div className="kpi__k">Kilometres driven</div>
-              <div className="kpi__v">{kmDriven.toLocaleString('en-US')}</div>
+              <div className="kpi__k">Cars listed</div>
+              <div className="kpi__v">{fleet.length}</div>
               <div className="kpi__d">
-                <span className="down">↑ 6%</span>
-                <span style={{ color: 'var(--ink-45)' }}>more wear than usual</span>
+                <span style={{ color: 'var(--ink-45)' }}>{onRent} on rent right now</span>
               </div>
             </div>
             <div className="kpi">
               <div className="kpi__k">Average per day</div>
               <div className="kpi__v">{money(avgPerDay, { cents: false })}</div>
-              <div className="kpi__d">
-                <span className="up">↑ $4.10</span>
-                <span style={{ color: 'var(--ink-45)' }}>vs last {period}</span>
-              </div>
             </div>
           </div>
 
@@ -111,17 +108,17 @@ export default function Overview() {
                     Earnings by day
                   </p>
                   <div className="num" style={{ fontSize: 22, fontWeight: 600 }}>
-                    {money(monthEarned, { cents: false })}
+                    {money(earned, { cents: false })}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 14 }}>
                   <span className="map__lg">
                     <span className="map__sw" style={{ background: 'var(--pine-700)' }} />
-                    Rented
+                    Booked
                   </span>
                   <span className="map__lg">
                     <span className="map__sw" style={{ background: 'var(--bone-300)' }} />
-                    Idle
+                    Nothing booked
                   </span>
                 </div>
               </div>
@@ -135,28 +132,21 @@ export default function Overview() {
                   </div>
                 ))}
               </div>
-              <div className="chart__x">
-                <span>1</span>
-                <span>7</span>
-                <span>TODAY</span>
-                <span>21</span>
-                <span>31</span>
-              </div>
               <p className="small" style={{ marginTop: 10 }}>
-                Faded bars are days already booked but not yet paid out.
+                Last 20 days, by the date each booking was made.
               </p>
             </div>
 
             <div>
               <div className="kpi" style={{ marginBottom: 14 }}>
-                <div className="kpi__k">Paid to you this {period}</div>
+                <div className="kpi__k">Earned this {period}, before payout</div>
                 <div className="num" style={{ fontSize: 27, fontWeight: 600, margin: '12px 0 6px' }}>
-                  {money(scaleToPeriod(monthEarned, period), { cents: false })}
+                  {money(earned, { cents: false })}
                 </div>
                 <div className="divider" style={{ margin: '14px 0' }} />
                 <div className="book__row" style={{ padding: '5px 0' }}>
                   <span>Rental income</span>
-                  <b className="num">{money(grossThisMonth)}</b>
+                  <b className="num">{money(grossThisPeriod)}</b>
                 </div>
                 <div className="book__row" style={{ padding: '5px 0' }}>
                   <span>KM0 fee 20%</span>
@@ -169,19 +159,6 @@ export default function Overview() {
               </div>
             </div>
           </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
-            <h2 className="dh3">Where your cars are</h2>
-            <span className="small">Location is visible to you while a car is on rent, and to nobody else.</span>
-          </div>
-          <CityMap fleet={fleet} />
         </>
       )}
     </>
@@ -207,24 +184,30 @@ export function PeriodSwitch({ value, onChange }) {
 
 function NeedsYou({ fleet }) {
   const paused = fleet.filter((c) => c.status === 'paused')
+  const onRent = fleet.find((c) => c.status === 'on_rent')
   const items = []
 
   if (paused.length > 0) {
     items.push({
       icon: 'doc',
       color: 'var(--brick)',
-      text: `${paused[0].car.model} is paused — insurance needs a fresh upload.`,
+      text: `${paused[0].car.model} is paused — switch it back on when it's ready to rent.`,
     })
   }
-  const onRent = fleet.find((c) => c.status === 'on_rent')
   if (onRent) {
+    const days = Math.max(
+      0,
+      Math.ceil((new Date(onRent.activeRental.drop_of_data_time) - new Date()) / 86400000),
+    )
     items.push({
       icon: 'user',
       color: 'var(--signal-700)',
-      text: `${onRent.renter} has the ${onRent.car.model} — returns in ${onRent.returnsIn} day${onRent.returnsIn === 1 ? '' : 's'}.`,
+      text: `${renterName(onRent.activeRental)} has the ${onRent.car.model} — returns in ${days} day${days === 1 ? '' : 's'}.`,
     })
   }
-  items.push({ icon: 'star', color: 'var(--ink-45)', text: 'Renters are waiting on a review from you.' })
+  if (items.length === 0) {
+    items.push({ icon: 'check', color: 'var(--verified)', text: 'Nothing needs your attention right now.' })
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>

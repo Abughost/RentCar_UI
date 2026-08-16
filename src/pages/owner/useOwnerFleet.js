@@ -1,38 +1,38 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { cars as carsApi, toList } from '../../api/endpoints'
-import { buildFleet, payoutRows, readDraftCars } from '../../lib/owner'
+import { cars as carsApi, host as hostApi, toList } from '../../api/endpoints'
+import { buildFleet, payoutRows } from '../../lib/owner'
 import { useAuth } from '../../state/AuthContext'
 
 /**
- * Fetches the real fleet once, at the top of the owner section (`OwnerLayout`), and wraps it
- * in the derived hosting numbers from `lib/owner.js`. Every page below reads the same fleet
- * back out through `useOwner()` instead of re-fetching — one request per visit, not one per
- * page.
+ * Fetches the host's own cars and the real bookings made on them, once, at the top of the
+ * owner section (`OwnerLayout`). Every page below reads the same fleet back out through
+ * `useOwner()` instead of re-fetching.
  *
- * There is no `mine=true` filter on `GET /cars` — `Car.author` never leaves the API — so
- * "my cars" is, honestly, the fleet `GET /cars` already returns. See the module doc in
- * `lib/owner.js` for the full reasoning.
+ * `?mine=true` on `GET /cars` is what makes "my cars" actually mean that — it filters to
+ * `Car.author === request.user` server-side and, unlike the public listing, includes paused
+ * cars the host still needs to see and manage.
  */
 export function useOwnerFleet() {
   const { user } = useAuth()
   const [fleet, setFleet] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  // Bumped after a new listing is published, so the effect below re-reads localStorage
-  // without needing a fresh network round trip.
-  const [draftTick, setDraftTick] = useState(0)
+  // Bumped after a car is listed or edited, so the effect below re-fetches without every
+  // caller needing to know the fetch even happened.
+  const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => {
     if (!user) return undefined
     const ac = new AbortController()
     setLoading(true)
 
-    carsApi
-      .list({ page_size: 8 }, { signal: ac.signal })
-      .then((data) => {
-        // Drafts first — a car just listed should be the one the owner sees land.
-        setFleet(buildFleet([...readDraftCars(), ...toList(data)]))
+    Promise.all([
+      carsApi.list({ mine: true, page_size: 50 }, { signal: ac.signal }),
+      hostApi.rentals({}, { signal: ac.signal }),
+    ])
+      .then(([carsData, rentalsData]) => {
+        setFleet(buildFleet(toList(carsData), toList(rentalsData)))
         setError(null)
       })
       .catch((err) => {
@@ -44,14 +44,15 @@ export function useOwnerFleet() {
       })
 
     return () => ac.abort()
-  }, [user, draftTick])
+  }, [user, refreshTick])
 
-  const refreshDrafts = useCallback(() => setDraftTick((n) => n + 1), [])
+  const refresh = useCallback(() => setRefreshTick((n) => n + 1), [])
 
-  const payouts = payoutRows(user?.id || 'host', 5)
+  const rentalsList = fleet.flatMap((c) => c.rentals)
+  const payouts = payoutRows(rentalsList, 5)
   const nextPayout = payouts[0]?.paidOut || 0
 
-  return { fleet, loading, error, payouts, nextPayout, refreshDrafts }
+  return { fleet, rentals: rentalsList, loading, error, payouts, nextPayout, refresh }
 }
 
 /** Read the fleet `OwnerLayout` already fetched — call this from any page under `/owner`. */

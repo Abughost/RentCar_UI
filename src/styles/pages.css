@@ -149,7 +149,8 @@
 /* The blanket rule in tokens.css is `*`, which never matches a pseudo-element, so the
    tarmac has to opt out of motion by hand or it would still stream. */
 @media (prefers-reduced-motion: reduce) {
-  .hero__road::before { animation: none !important; }
+  .hero__road::before,
+  .hero-car::after { animation: none !important; }
 }
 @keyframes km0-drive {
   from { transform: translateX(calc(100% + 22vw)); }
@@ -172,6 +173,79 @@
   filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.5));
   will-change: transform;
   animation: km0-drive var(--drive) var(--brake) both;
+}
+
+/* ---------- travelling bands ----------
+   Used by the brand badges under the hero and by the body-shape shelf further down, which run
+   against each other. One lap of cards is repeated until it covers the stage, so the offset can
+   wrap at a single lap and the run never shows a seam. Only the track is transformed. */
+.mq {
+  overflow: hidden;
+  /* Sideways is ours, up and down still belongs to the page. */
+  touch-action: pan-y;
+  cursor: grab;
+  /* Without this a drag selects the card text instead of moving the band. */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Feathers both ends so cards arrive and leave rather than popping at a hard edge. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
+}
+.mq:active { cursor: grabbing; }
+.mq__track {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  will-change: transform;
+}
+.mq__lap { display: flex; gap: 16px; }
+.mq__lap > * { flex: 0 0 208px; }
+
+/* Reduced motion: the band is not driven, so it becomes an ordinary scrolling row. */
+.mq--still {
+  overflow-x: auto;
+  /* Nothing is intercepting the gesture any more, so hand panning back to the browser. */
+  touch-action: auto;
+  cursor: default;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.mq--still .mq__track { transform: none !important; }
+
+/* The brand band gets the same heading treatment as the fleet shelf it pairs with; only the
+   bottom padding goes, because the shelf's own section supplies the gap below. */
+.brands { padding-bottom: 0; }
+
+/* A badge carries a logo where a shape card carries a silhouette. The logo box is given the
+   silhouette's height so the two bands sit on the same card, at the same size. */
+.cat--badge { justify-content: space-between; }
+.cat__logo {
+  display: block;
+  width: 100%;
+  /* A shape card spends a line on its price under the name; a badge has only the name, so the
+     logo box takes that line back. 2:1 lands both cards on the same height at any card width,
+     which is why this is a ratio and not a pixel value. */
+  aspect-ratio: 2 / 1;
+  object-fit: contain;
+  object-position: left center;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+.cat__logo--none {
+  display: grid;
+  place-items: center start;
+  font-family: var(--disp);
+  font-variation-settings: 'wdth' 112;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink-20);
+}
+
+@media (max-width: 900px) {
+  .mq__track,
+  .mq__lap { gap: 12px; }
+  .mq__lap > * { flex: 0 0 168px; }
 }
 
 .search {
@@ -296,22 +370,64 @@
 /* ============================================================
    04 FIND A CAR
    ============================================================ */
-.srchbar { background: var(--pine-900); padding: 14px var(--gutter); display: flex; align-items: center; color: var(--on-pine); flex-wrap: wrap; gap: 10px; }
-.srchbar__cell { padding: 0 20px; border-right: 1px solid rgba(233, 235, 228, 0.16); }
-.srchbar__cell:first-child { padding-left: 0; }
-.srchbar__k { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(233, 235, 228, 0.42); }
-.srchbar__v { font-size: 14px; font-weight: 600; color: var(--on-pine); margin-top: 3px; }
-.srchbar__act { margin-left: auto; display: flex; gap: 10px; }
 
-.results { display: grid; grid-template-columns: 296px 1fr; gap: 32px; padding: 32px var(--gutter) 72px; align-items: start; }
+/* the filter bar — date & location, car search, and every dropdown filter (gearbox, price,
+   body, fuel) that used to sit in a separate left rail now lives here as pills. Light by
+   default, like .nav; the dark-theme block below restores the pine treatment. */
+.filterbar { position: relative; background: var(--bone-050); border-bottom: 1px solid var(--bone-200); color: var(--ink); padding: 14px var(--gutter); display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.filterbar__group { position: relative; }
+.filterbar__pill {
+  display: inline-flex; align-items: center; gap: 8px; background: var(--bone-200);
+  border: 1px solid transparent; border-radius: var(--r-s); padding: 10px 14px; font-size: 13px;
+  font-weight: 600; color: var(--ink); cursor: pointer; max-width: 220px;
+}
+.filterbar__pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filterbar__pill:hover { background: var(--bone-300); }
+.filterbar__pill.is-active { background: rgba(244, 203, 46, 0.22); color: var(--ink); }
+.filterbar__pill.is-open { border-color: var(--signal-700); }
+.filterbar__pill .ico { flex: none; }
 
-.filters { background: var(--bone-050); border: 1px solid var(--bone-200); border-radius: var(--r-m); padding: 22px; position: sticky; top: 20px; }
-.filters__head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--bone-200); margin-bottom: 18px; }
-.filters__title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
-.filters__clear { font-size: 12px; color: var(--ink-45); text-decoration: underline; background: 0; border: 0; cursor: pointer; font-family: var(--body); }
-.fgrp { padding: 18px 0; border-bottom: 1px solid var(--bone-200); }
-.fgrp:last-child { border-bottom: 0; padding-bottom: 0; }
-.fgrp__t { font-size: 13px; font-weight: 700; margin: 0 0 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.filterbar__panel {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 50; min-width: 220px;
+  background: var(--bone-050); border: 1px solid var(--bone-200); border-radius: var(--r-m);
+  padding: 18px; box-shadow: 0 12px 28px rgba(10, 29, 24, 0.22);
+}
+
+.filterbar__search {
+  display: flex; align-items: center; gap: 8px; background: var(--bone-200);
+  border-radius: var(--r-s); padding: 10px 14px; color: var(--ink);
+}
+.filterbar__search input {
+  border: 0; outline: 0; background: transparent; font: inherit; color: inherit; width: 150px;
+}
+.filterbar__search input::placeholder { color: var(--ink-45); }
+.filterbar__clearField { border: 0; background: 0; color: var(--ink-45); cursor: pointer; display: flex; padding: 0; }
+.filterbar__suggestions { display: flex; flex-direction: column; padding: 8px; min-width: 200px; }
+.filterbar__suggestions button {
+  text-align: left; border: 0; background: 0; padding: 9px 10px; border-radius: var(--r-xs);
+  font-size: 13.5px; color: var(--ink); cursor: pointer; font-family: inherit;
+}
+.filterbar__suggestions button:hover { background: var(--bone-200); }
+
+:root[data-theme='dark'] .filterbar { background: var(--pine-900); border-bottom: 0; color: var(--on-pine); }
+:root[data-theme='dark'] .filterbar__pill { background: rgba(233, 235, 228, 0.08); color: var(--on-pine); }
+:root[data-theme='dark'] .filterbar__pill:hover { background: rgba(233, 235, 228, 0.14); }
+:root[data-theme='dark'] .filterbar__pill.is-active { background: rgba(244, 203, 46, 0.16); color: var(--signal); }
+:root[data-theme='dark'] .filterbar__pill.is-open { border-color: var(--signal); }
+:root[data-theme='dark'] .filterbar__search { background: rgba(233, 235, 228, 0.08); color: var(--on-pine); }
+:root[data-theme='dark'] .filterbar__search input::placeholder { color: rgba(233, 235, 228, 0.45); }
+:root[data-theme='dark'] .filterbar__clearField { color: rgba(233, 235, 228, 0.6); }
+:root[data-theme='dark'] .filterbar__clear { color: rgba(233, 235, 228, 0.55); }
+
+.filterbar__clear { font-size: 12px; color: var(--ink-45); text-decoration: underline; background: 0; border: 0; cursor: pointer; font-family: var(--body); margin-left: 4px; }
+.filterbar__update { margin-left: auto; flex: none; width: 42px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+
+.results { padding: 32px var(--gutter) 72px; }
+
+.fgrp { padding: 14px 0; }
+.fgrp:first-child { padding-top: 0; }
+.fgrp:last-child { padding-bottom: 0; }
+.fgrp__t { font-size: 13px; font-weight: 700; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .fgrp__n { font-family: var(--mono); font-size: 11px; color: var(--ink-45); font-weight: 400; }
 .fopt { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-70); margin-bottom: 11px; cursor: pointer; }
 .fopt:last-child { margin-bottom: 0; }
@@ -357,8 +473,6 @@
 .sortbar { display: flex; gap: 8px; align-items: center; }
 .sortbar .fld__box { min-height: 0; padding: 9px 12px; font-size: 13px; font-weight: 600; gap: 20px; }
 
-.filters__toggle { display: none; }
-
 .cars { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .car {
   background: var(--bone-050);
@@ -400,10 +514,6 @@
 .pager { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 34px; }
 
 @media (max-width: 1100px) {
-  .results { grid-template-columns: 1fr; }
-  .filters { position: static; display: none; }
-  .filters.is-open { display: block; }
-  .filters__toggle { display: inline-flex; }
   .car--wide { flex-direction: column; grid-column: span 2; }
   .car--wide .car__art { width: 100%; }
 }
@@ -411,9 +521,8 @@
   .cars { grid-template-columns: 1fr; }
   .car--wide { grid-column: span 1; }
   .car__specs--4 { grid-template-columns: 1fr 1fr; }
-  .srchbar__cell { border-right: 0; padding: 0; }
-  .srchbar { gap: 14px 20px; }
-  .srchbar__act { margin-left: 0; width: 100%; }
+  .filterbar__search input { width: 100px; }
+  .filterbar__update { margin-left: 0; }
 }
 
 /* ============================================================
@@ -428,6 +537,10 @@
 .detail__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; flex-wrap: wrap; }
 
 .hero-car { background: linear-gradient(155deg, #e4e8df 0%, #cfd6c9 100%); border-radius: var(--r-l); padding: 44px 48px 34px; position: relative; overflow: hidden; }
+/* The lane markings run continuously right to left, like tarmac passing under a car that
+   never quite arrives — ambient motion, not a one-shot reveal, so it loops for as long as the
+   card is on screen. One period of the repeating pattern is 80px, so the loop point never
+   shows a seam. */
 .hero-car::after {
   content: '';
   position: absolute;
@@ -436,10 +549,58 @@
   bottom: 44px;
   height: 8px;
   background: repeating-linear-gradient(90deg, rgba(21, 25, 21, 0.16) 0 40px, transparent 40px 80px);
+  background-repeat: repeat-x;
+  animation: km0-lane 3.2s linear infinite;
 }
-.hero-car .carart { color: var(--pine-800); position: relative; z-index: 1; max-width: 640px; margin: 0 auto; }
-.hero-car__photo { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; display: block; width: 100%; border-radius: var(--r-s); }
+@keyframes km0-lane {
+  from { background-position-x: 0; }
+  to { background-position-x: -80px; }
+}
+.hero-car__photo { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; display: block; width: 100%; border-radius: var(--r-s); cursor: zoom-in; }
 .hero-car__plate { position: absolute; top: 22px; right: 24px; z-index: 2; }
+
+/* The padding above assumes a real photo setting the box's height. A tiny badge in that same
+   box left a wall of empty tarmac above and below it, reading as "big background, small
+   logo" — this pulls the box down to hug the badge instead, so it sits right under the
+   car's name rather than floating in the middle of a mostly-empty card. */
+.hero-car--empty { padding: 18px 24px 14px; }
+.hero-car--empty::after { bottom: 14px; }
+.hero-car--empty .hero-car__badge { padding-bottom: 14px; }
+
+/* Only shown when there is no real photo on file — a compact badge (icon over its own
+   category name), the same size language as a category card on the home shelf. It must never
+   read as a stand-in for the missing photo, so it stays small and sits low in the box, on the
+   lane line, the way the actual car would if the photo had loaded. */
+.hero-car__emblem {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+.hero-car__badge {
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 44px; /* rests on the lane line, .hero-car::after sits at bottom: 44px */
+  /* The one-shot arrival — mirrors the home hero's car, but from the left, since this is a
+     single vehicle settling into its own page rather than a fleet driving past. The wrapping
+     .hero-car is keyed on the car's id in CarDetail.jsx, so picking a different car from
+     "similar cars" replays it instead of leaving the badge sitting there mid-flight. */
+  animation: km0-emblem-in 0.85s cubic-bezier(0.16, 0.84, 0.28, 1) both;
+}
+.hero-car__badgeArt { width: 64px; height: auto; color: var(--pine-800); }
+.hero-car__badgeName {
+  font-family: var(--disp);
+  font-variation-settings: 'wdth' 112;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--pine-800);
+}
+@keyframes km0-emblem-in {
+  from { transform: translateX(calc(-100% - 12vw)); opacity: 0; }
+}
 
 .thumbs { display: flex; gap: 10px; margin-top: 14px; overflow-x: auto; }
 .thumb {
@@ -490,11 +651,116 @@
 .acc__t { font-weight: 600; font-size: 14.5px; flex: 1; }
 .acc__body { padding: 0 0 18px; font-size: 13.5px; color: var(--ink-70); line-height: 1.6; border-bottom: 1px solid var(--bone-200); }
 
-.pricetiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--bone-200); border: 1px solid var(--bone-200); border-radius: var(--r-m); overflow: hidden; margin-top: 14px; }
-.pricetier { background: var(--bone-050); padding: 16px 18px; }
+.pricetiers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--bone-200); border: 1px solid var(--bone-200); border-radius: var(--r-m); overflow: hidden; margin-top: 14px; }
+/* Wraps the 30+ card so its calendar popover has something to anchor to without nesting an
+   interactive dialog inside the <button> itself. */
+.pricetier-wrap { position: relative; background: var(--bone-200); }
+.pricetier-wrap .pricetier { height: 100%; }
+.pricetier {
+  background: var(--bone-050);
+  padding: 16px 18px;
+  /* Button reset — this used to be a <div>, so nothing here should look or act different
+     from before except that it now responds to a click. */
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pricetier:hover:not(.is-on):not(:disabled) { background: var(--bone-100); }
+.pricetier:disabled { cursor: default; opacity: 0.5; }
 .pricetier.is-on { background: #fff; box-shadow: inset 0 0 0 1.5px var(--pine-800); }
 .pricetier__k { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-45); margin-bottom: 8px; }
 .pricetier__v { font-family: var(--mono); font-size: 18px; font-weight: 600; }
+
+/* A bracket only narrows the rental to a range — this is where the exact day count is set.
+   The odometer digits carry their own dark chip styling wherever they sit, so this can live on
+   the same light card as the tiers above it without a dark ticket wrapper of its own. */
+.daystepper {
+  margin-top: 10px;
+  padding: 14px 18px;
+  background: var(--bone-050);
+  border: 1px solid var(--bone-200);
+  border-radius: var(--r-m);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.daystepper__label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-45); }
+.daystepper__controls { display: flex; align-items: center; gap: 12px; }
+.daystepper__btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--bone-300);
+  background: var(--bone-100);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+}
+.daystepper__btn:hover:not(:disabled) { border-color: var(--ink-45); }
+.daystepper__btn:disabled { opacity: 0.35; cursor: default; }
+
+/* Past 30 days the plain "N days" drum stops being legible at a glance — .daystepper__combo
+   is the "months : days" layout that replaces it, same digit chips either side of a colon. */
+.daystepper__combo { display: flex; align-items: baseline; gap: 6px; }
+.daystepper__unit { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-45); }
+.daystepper__colon { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--ink-45); }
+
+/* ---------- 30+ calendar popover ---------- */
+.minical {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: 264px;
+  background: var(--bone-050);
+  border: 1px solid var(--bone-200);
+  border-radius: var(--r-m);
+  box-shadow: 0 16px 40px rgba(10, 29, 24, 0.22);
+  padding: 14px;
+}
+.minical__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.minical__title { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--ink); }
+.minical__nav {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--bone-300);
+  background: var(--bone-100);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.minical__nav:hover { border-color: var(--ink-45); }
+.minical__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.minical__grid--head { margin-bottom: 4px; }
+.minical__grid--head span { font-family: var(--mono); font-size: 9px; text-align: center; color: var(--ink-45); text-transform: uppercase; }
+.minical__day {
+  aspect-ratio: 1;
+  border-radius: var(--r-s);
+  border: 0;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.minical__day:hover:not(:disabled) { background: var(--bone-200); }
+.minical__day:disabled { color: var(--ink-20); cursor: default; }
+.minical__day.is-on { background: var(--signal); color: var(--on-signal); font-weight: 700; }
 
 /* booking rail — shared by 05 and 06 */
 .book { background: var(--bone-050); border: 1px solid var(--bone-200); border-radius: var(--r-m); overflow: hidden; position: sticky; top: 20px; }
@@ -510,8 +776,9 @@
 .book__row { display: flex; justify-content: space-between; gap: 14px; font-size: 13.5px; padding: 7px 0; color: var(--ink-70); }
 .book__row b { color: var(--ink); font-weight: 600; }
 .book__row--muted b { color: var(--ink-45); font-weight: 400; }
-.book__tot { padding: 18px 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; background: var(--bone-100); }
-.book__totV { font-family: var(--mono); font-size: 26px; font-weight: 600; }
+/* Same dark ticket as .book__top, so the total reads as the other half of one price story
+   rather than a plain receipt line. */
+.book__tot { padding: 18px 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; background: var(--pine-900); color: var(--on-pine); }
 .book__cta { padding: 18px 24px 22px; background: var(--bone-100); }
 .book__car { color: var(--signal); margin-bottom: 8px; }
 .book__car .carart { max-width: 180px; }
@@ -526,6 +793,68 @@
 @media (max-width: 700px) {
   .hero-car { padding: 24px 20px 20px; }
   .hero-car::after { bottom: 24px; }
+  .hero-car--empty { padding: 16px 20px 12px; }
+  .hero-car--empty::after { bottom: 12px; }
+  .hero-car--empty .hero-car__badge { padding-bottom: 12px; }
+}
+
+/* ---------- photo lightbox ---------- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(7, 12, 10, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px;
+}
+.lightbox__img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--r-s); cursor: default; }
+.lightbox__close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(233, 235, 228, 0.28);
+  background: rgba(233, 235, 228, 0.06);
+  color: var(--on-pine);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.lightbox__close:hover { background: rgba(233, 235, 228, 0.14); }
+.lightbox__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(233, 235, 228, 0.28);
+  background: rgba(233, 235, 228, 0.06);
+  color: var(--on-pine);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.lightbox__nav:hover { background: rgba(233, 235, 228, 0.14); }
+.lightbox__nav--prev { left: 18px; }
+.lightbox__nav--next { right: 18px; }
+.lightbox__count {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  color: rgba(233, 235, 228, 0.7);
+}
+@media (max-width: 700px) {
+  .lightbox { padding: 20px; }
+  .lightbox__nav { width: 40px; height: 40px; }
+  .lightbox__nav--prev { left: 8px; }
+  .lightbox__nav--next { right: 8px; }
 }
 
 /* ============================================================
@@ -651,11 +980,14 @@
    08 ACCOUNT
    ============================================================ */
 .acct { display: grid; grid-template-columns: 250px 1fr; flex: 1; }
-.side { background: var(--pine-900); color: var(--on-pine); padding: 26px 20px; }
-.side__u { display: flex; gap: 12px; align-items: center; padding-bottom: 20px; border-bottom: 1px solid rgba(233, 235, 228, 0.14); margin-bottom: 18px; }
+
+/* .side (renting) and .hside (hosting, owner.css) share this look: a white panel that
+   switches to the pine-dark treatment only in dark theme — see the override block below. */
+.side { background: var(--bone-050); color: var(--ink); padding: 26px 20px; border-right: 1px solid var(--bone-200); }
+.side__u { display: flex; gap: 12px; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--bone-200); margin-bottom: 18px; }
 .side__u .avatar { width: 40px; height: 40px; font-size: 13px; }
-.side__n { font-size: 14px; font-weight: 600; color: var(--on-pine); }
-.side__t { font-family: var(--mono); font-size: 9.5px; color: var(--signal); letter-spacing: 0.06em; }
+.side__n { font-size: 14px; font-weight: 600; color: var(--ink); }
+.side__t { font-family: var(--mono); font-size: 9.5px; color: var(--signal-700); letter-spacing: 0.06em; }
 .side__l {
   display: flex;
   align-items: center;
@@ -663,7 +995,7 @@
   padding: 11px 12px;
   border-radius: var(--r-s);
   font-size: 13.5px;
-  color: rgba(233, 235, 228, 0.68);
+  color: var(--ink-70);
   margin-bottom: 3px;
   text-decoration: none;
   background: transparent;
@@ -673,12 +1005,32 @@
   font-family: var(--body);
   text-align: left;
 }
-.side__l:hover { background: rgba(233, 235, 228, 0.07); color: var(--bone-050); }
-.side__l.is-on { background: rgba(244, 203, 46, 0.13); color: var(--signal); font-weight: 600; }
-.side__badge { margin-left: auto; font-family: var(--mono); font-size: 9.5px; background: rgba(233, 235, 228, 0.14); padding: 2px 6px; border-radius: 99px; }
+.side__l:hover { background: var(--bone-200); color: var(--ink); }
+.side__l.is-on { background: rgba(244, 203, 46, 0.18); color: var(--ink); font-weight: 600; }
+.side__badge { margin-left: auto; font-family: var(--mono); font-size: 9.5px; background: var(--bone-200); padding: 2px 6px; border-radius: 99px; }
 .side__warn { background: rgba(177, 74, 51, 0.18); border-radius: var(--r-s); padding: 14px; }
-.side__warnT { font-size: 12.5px; font-weight: 600; color: #f2b9aa; margin-bottom: 5px; }
-.side__warnX { font-size: 11.5px; color: rgba(233, 235, 228, 0.6); line-height: 1.45; }
+.side .divider--onDark,
+.hside .divider--onDark { background: var(--bone-200); }
+
+:root[data-theme='dark'] .side,
+:root[data-theme='dark'] .hside {
+  background: var(--pine-900);
+  color: var(--on-pine);
+  border-right: 0;
+}
+:root[data-theme='dark'] .side__u { border-bottom-color: rgba(233, 235, 228, 0.14); }
+:root[data-theme='dark'] .side__n { color: var(--on-pine); }
+:root[data-theme='dark'] .side__t { color: var(--signal); }
+:root[data-theme='dark'] .side__l { color: rgba(233, 235, 228, 0.68); }
+:root[data-theme='dark'] .side__l:hover { background: rgba(233, 235, 228, 0.07); color: var(--on-pine); }
+:root[data-theme='dark'] .side__l.is-on { background: rgba(244, 203, 46, 0.13); color: var(--signal); }
+:root[data-theme='dark'] .side__badge { background: rgba(233, 235, 228, 0.14); }
+:root[data-theme='dark'] .side .divider--onDark,
+:root[data-theme='dark'] .hside .divider--onDark { background: rgba(233, 235, 228, 0.14); }
+.side__warnT { font-size: 12.5px; font-weight: 600; color: var(--brick); margin-bottom: 5px; }
+.side__warnX { font-size: 11.5px; color: var(--ink-70); line-height: 1.45; }
+:root[data-theme='dark'] .side__warnT { color: #f2b9aa; }
+:root[data-theme='dark'] .side__warnX { color: rgba(233, 235, 228, 0.6); }
 
 .main { background: var(--bone-100); padding: 34px 40px 48px; min-width: 0; }
 .main__head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; gap: 20px; flex-wrap: wrap; }

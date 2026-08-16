@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import Nav from '../../components/Nav'
 import { Icon } from '../../components/primitives'
 import { money } from '../../lib/pricing'
 import { fullName, initials, useAuth } from '../../state/AuthContext'
@@ -28,19 +29,9 @@ export default function OwnerLayout() {
 
   return (
     <div className="page">
+      <Nav />
       <div className="hostshell">
         <aside className="hside">
-          <Link to="/" className="nav__logo" style={{ fontSize: 20 }}>
-            KM<em>0</em>
-          </Link>
-
-          <div className="modesw">
-            <Link to="/account" className="modesw__b">
-              RENTING
-            </Link>
-            <span className="modesw__b is-on">HOSTING</span>
-          </div>
-
           <div className="hside__nav">
             {SIDEBAR.map((item) => (
               <NavLink
@@ -64,18 +55,9 @@ export default function OwnerLayout() {
           <div className="hside__foot" style={{ marginTop: 'auto', width: '100%' }}>
             <div className="divider--onDark" style={{ margin: '18px 0' }} />
             {nextPayout > 0 && (
-              <div
-                style={{
-                  background: 'rgba(244,203,46,.12)',
-                  borderRadius: 'var(--r-s)',
-                  padding: 14,
-                  marginBottom: 16,
-                }}
-              >
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--signal)', marginBottom: 5 }}>
-                  Payout on Monday
-                </div>
-                <div style={{ fontSize: 11.5, color: 'rgba(233,235,228,.6)', lineHeight: 1.45 }}>
+              <div className="hside__payout">
+                <div className="hside__payoutT">Payout on Monday</div>
+                <div className="hside__payoutX">
                   {money(nextPayout, { cents: true })} scheduled. Payouts run every Monday at 09:00.
                 </div>
               </div>

@@ -40,6 +40,11 @@
 :root[data-theme='dark'] .empty__art {
   color: #93a79b;
 }
+/* The no-photo badge's caption is plain text, not an icon — .carart's color rule above
+   doesn't reach it, and pine-800 against the dark hero-car gradient was nearly unreadable. */
+:root[data-theme='dark'] .hero-car__badgeName {
+  color: #93a79b;
+}
 
 /* ---- pine-800 sits too close to the card surface in the dark, so interactive
         fills move up to pine-600 ---- */
@@ -168,24 +173,25 @@
   font-weight: 600;
 }
 
-/* On the pine nav the track has to sit on the panel, not on the page. */
+/* On the pine nav (and the sidebar, once it's actually pine — dark theme only, see
+   pages.css) the track has to sit on the panel, not on the page. */
 .nav:not(.nav--light) .themetog,
-.side .themetog,
+:root[data-theme='dark'] .side .themetog,
 .auth__aside .themetog {
   background: rgba(233, 235, 228, 0.08);
 }
 .nav:not(.nav--light) .themetog button,
-.side .themetog button,
+:root[data-theme='dark'] .side .themetog button,
 .auth__aside .themetog button {
   color: rgba(233, 235, 228, 0.5);
 }
 .nav:not(.nav--light) .themetog button:hover,
-.side .themetog button:hover,
+:root[data-theme='dark'] .side .themetog button:hover,
 .auth__aside .themetog button:hover {
   color: var(--on-pine);
 }
 .nav:not(.nav--light) .themetog button.is-on,
-.side .themetog button.is-on,
+:root[data-theme='dark'] .side .themetog button.is-on,
 .auth__aside .themetog button.is-on {
   color: var(--on-signal);
 }

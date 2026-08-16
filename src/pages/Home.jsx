@@ -4,12 +4,16 @@ import { cars as carsApi, news as newsApi, toList } from '../api/endpoints'
 import { mediaUrl } from '../api/client'
 import Footer from '../components/Footer'
 import Nav from '../components/Nav'
-import SearchModule from '../components/SearchModule'
+import BrandCarousel from '../components/BrandCarousel'
+import Marquee from '../components/Marquee'
 import TabBar from '../components/TabBar'
 import { CarArt, Gauge, Icon, Odometer } from '../components/primitives'
 import { STATIONS, readyGauge } from '../lib/fleet'
 import { dailyRate, money } from '../lib/pricing'
 import { useBooking } from '../state/BookingContext'
+
+/** Pixels per second for the body-shape band — positive, so it runs against the brand band. */
+const SHAPE_PXS = 18
 
 /** Frame 03. */
 export default function Home() {
@@ -46,7 +50,9 @@ export default function Home() {
     return acc
   }, {})
 
-  const shelf = categories.slice(0, 4)
+  // The shelf used to be four cards across a grid. As a band it wants the whole list — a short
+  // lap has to be repeated more times to cover the stage, which reads as an obvious loop.
+  const shelf = categories
 
   return (
     <div className="page">
@@ -73,7 +79,7 @@ export default function Home() {
         <div className="hero__road" />
       </div>
 
-      <SearchModule />
+      <BrandCarousel />
 
       {/* ---- the fleet ---- */}
       <div className="sec">
@@ -89,12 +95,14 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="cats">
+        {/* Travels the opposite way to the brand band above it, so the two read as a pair
+            rather than one long scroll. */}
+        <Marquee speed={SHAPE_PXS} label="Body shapes">
           {shelf.map((cat, i) => (
             <Link
               key={cat.id}
               to={`/cars?category=${encodeURIComponent(cat.name)}`}
-              className={`cat${i === 0 ? ' is-on' : ''}`}
+              className="cat"
             >
               <CarArt
                 shape={['hatch', 'sedan', 'suv', 'van'][i % 4]}
@@ -118,7 +126,7 @@ export default function Home() {
               <div className="cat__p">Charging included</div>
             </div>
           </Link>
-        </div>
+        </Marquee>
       </div>
 
       {/* ---- the promise ---- */}

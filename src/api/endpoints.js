@@ -68,6 +68,19 @@ export const cars = {
   brands: (options) => api.get('cars/brand', options),
 
   categories: (options) => api.get('cars/category', options),
+
+  colors: (options) => api.get('cars/color', options),
+
+  /**
+   * List a car. `CarWriteSerializer` binds `author` from the request — the body carries no
+   * user field, same reasoning as `rentals.create`. `images`, when present, must be real
+   * `File` objects; the caller sends this as `multipart/form-data` (see `isForm` on `api.post`).
+   */
+  create: (payload, options) => api.post('cars', payload, { ...options, isForm: true }),
+
+  update: (id, payload, options) => api.patch(`cars/${id}`, payload, { ...options, isForm: true }),
+
+  remove: (id, options) => api.del(`cars/${id}`, options),
 }
 
 /* ---------------------------------------------------------------- rentals */
@@ -87,6 +100,24 @@ export const rentals = {
   cancel: (id) => api.del(`user/rentals/${id}`),
 
   history: (options) => api.get('rentals/history', options),
+}
+
+/* ---------------------------------------------------------------- hosting */
+
+export const host = {
+  /**
+   * Bookings made on the signed-in host's own cars — the real data the hosting dashboard
+   * reads instead of the numbers `lib/owner.js` used to invent from a car's id. Pass
+   * `{ active: true }` for only the rentals covering right now (car.status === 'on_rent').
+   */
+  rentals: (params = {}, options) => {
+    const qs = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') qs.set(k, v)
+    })
+    const q = qs.toString()
+    return api.get(`host/rentals${q ? `?${q}` : ''}`, options)
+  },
 }
 
 /* ---------------------------------------------------------------- news */

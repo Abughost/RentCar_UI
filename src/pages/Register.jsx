@@ -156,7 +156,7 @@ export default function Register() {
           <Link to="/" className="auth__logo">
             KM<em>0</em>
           </Link>
-          <ThemeToggle />
+          <ThemeToggle compact />
         </div>
         <div style={{ margin: 'auto 0' }}>
           <p className="eyebrow eyebrow--onDark" style={{ margin: '0 0 16px' }}>

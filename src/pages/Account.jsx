@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cars as carsApi, rentals as rentalsApi, toList } from '../api/endpoints'
-import Nav from '../components/Nav'
-import TabBar from '../components/TabBar'
-import ThemeToggle from '../components/ThemeToggle'
 import {
   Alert,
   Button,
@@ -17,21 +14,13 @@ import {
 import { daysBetween, formatRange, formatWhen, tripProgress } from '../lib/dates'
 import { bodyShape, bookingRef, carTitle, plateFor } from '../lib/fleet'
 import { coverOptions, money, quote } from '../lib/pricing'
-import { fullName, initials, useAuth } from '../state/AuthContext'
-
-const SECTIONS = [
-  { id: 'trips', label: 'Trips', icon: 'key' },
-  { id: 'licence', label: 'Licence & ID', icon: 'doc' },
-  { id: 'payment', label: 'Payment', icon: 'card' },
-  { id: 'loyalty', label: 'Loyalty', icon: 'star' },
-  { id: 'invoices', label: 'Invoices', icon: 'route' },
-  { id: 'settings', label: 'Settings', icon: 'user' },
-]
+import { SECTIONS } from './RentingLayout'
+import { useAuth } from '../state/AuthContext'
 
 /** Frame 08. */
 export default function Account() {
   const { section = 'trips' } = useParams()
-  const { user, isStaff } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   const [bookings, setBookings] = useState([])
@@ -114,87 +103,17 @@ export default function Account() {
   }, 0)
 
   return (
-    <div className="page">
-      <Nav />
-
-      <div className="acct">
-        <aside className="side">
-          <div className="side__u">
-            <span className="avatar">{initials(user)}</span>
-            <div>
-              <div className="side__n">{fullName(user)}</div>
-              <div className="side__t">
-                {isStaff ? String(user?.role || 'STAFF').toUpperCase() : 'MEMBER'} ·{' '}
-                {kmDriven.toLocaleString('en-US')} KM
-              </div>
-            </div>
-          </div>
-
-          <div className="side__nav">
-            {SECTIONS.map((item) => (
-              <Link
-                key={item.id}
-                to={`/account/${item.id}`}
-                className={`side__l${section === item.id ? ' is-on' : ''}`}
-              >
-                <Icon name={item.icon} size="sm" />
-                {item.label}
-                {item.id === 'trips' && bookings.length > 0 && (
-                  <span className="side__badge">{bookings.length}</span>
-                )}
-              </Link>
-            ))}
-          </div>
-
-          <div className="divider--onDark" style={{ margin: '18px 0' }} />
-          <Link className="side__l" to="/owner">
-            <Icon name="key" size="sm" />
-            Hosting — list a car
-          </Link>
-
-          <div className="divider--onDark" style={{ margin: '18px 0' }} />
-          <p className="eyebrow eyebrow--onDark" style={{ marginBottom: 10 }}>
-            Theme
+    <>
+      <div className="main__head">
+        <div>
+          <p className="eyebrow" style={{ margin: '0 0 8px' }}>
+            Account
           </p>
-          <ThemeToggle />
-
-          {isStaff && (
-            <>
-              <div className="divider--onDark" style={{ margin: '18px 0' }} />
-              <a className="side__l" href="/en/admin/" target="_blank" rel="noreferrer">
-                <Icon name="out" size="sm" />
-                Django admin
-              </a>
-            </>
-          )}
-
-          {!user?.is_registered && !isStaff && (
-            <>
-              <div className="divider--onDark" style={{ margin: '18px 0' }} />
-              <div className="side__warn">
-                <div className="side__warnT">Licence not on file</div>
-                <div className="side__warnX">
-                  Add it once and every pick-up becomes a plate number and a key.
-                </div>
-                <Link to="/register/licence" className="btn btn--signal btn--sm" style={{ marginTop: 10 }}>
-                  Add licence
-                </Link>
-              </div>
-            </>
-          )}
-        </aside>
-
-        <main className="main">
-          <div className="main__head">
-            <div>
-              <p className="eyebrow" style={{ margin: '0 0 8px' }}>
-                Account
-              </p>
-              <h1 className="dh2">{SECTIONS.find((s) => s.id === section)?.label || 'Trips'}</h1>
-            </div>
-            <Link to="/cars" className="btn btn--signal btn--sm">
-              <Icon name="plus" size="sm" />
-              Book another car
+          <h1 className="dh2">{SECTIONS.find((s) => s.id === section)?.label || 'Trips'}</h1>
+        </div>
+        <Link to="/cars" className="btn btn--signal btn--sm">
+          <Icon name="plus" size="sm" />
+          Book another car
             </Link>
           </div>
 
@@ -320,11 +239,7 @@ export default function Account() {
               )}
             </>
           )}
-        </main>
-      </div>
-
-      <TabBar />
-    </div>
+    </>
   )
 }
 

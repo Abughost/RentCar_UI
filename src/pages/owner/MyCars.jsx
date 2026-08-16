@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { cars as carsApi } from '../../api/endpoints'
 import { Alert, Button, CarArt, Gauge, Icon, Plate, Spinner } from '../../components/primitives'
 import { carTitle } from '../../lib/fleet'
-import { fleetCount, STATUS_LABEL, STATUS_TONE } from '../../lib/owner'
+import { daysRentedInWindow, earnedInWindow, fleetCount, renterName, STATUS_LABEL, STATUS_TONE } from '../../lib/owner'
 import { money } from '../../lib/pricing'
 import { PeriodSwitch } from './Overview'
 import { useOwner } from './useOwnerFleet'
@@ -14,9 +15,11 @@ const FILTERS = [
   { key: 'paused', label: 'Paused' },
 ]
 
+const WINDOW_DAYS = 30
+
 /** Frame 13 — one row per car, status and money read left to right. */
 export default function MyCars() {
-  const { fleet, loading, error } = useOwner()
+  const { fleet, loading, error, refresh } = useOwner()
   const [filter, setFilter] = useState('all')
   const [period, setPeriod] = useState('month')
 
@@ -55,7 +58,7 @@ export default function MyCars() {
             No cars listed yet
           </h3>
           <p className="small" style={{ marginBottom: 18 }}>
-            Once you list a car it shows up here, with its status, location and what it earns.
+            Once you list a car it shows up here, with its status and what it earns.
           </p>
           <Link to="/owner/cars/new" className="btn btn--pine">
             Put a car on KM0
@@ -77,7 +80,7 @@ export default function MyCars() {
           </div>
 
           {shown.map((c) => (
-            <CarRow key={c.id} hostCar={c} />
+            <CarRow key={c.id} hostCar={c} onChanged={refresh} />
           ))}
         </>
       )}
@@ -85,8 +88,27 @@ export default function MyCars() {
   )
 }
 
-function CarRow({ hostCar: c }) {
-  const occGauge = Math.max(1, Math.round((c.occupancyPct / 100) * 6))
+function CarRow({ hostCar: c, onChanged }) {
+  const [toggling, setToggling] = useState(false)
+  const now = new Date()
+  const windowStart = new Date(now)
+  windowStart.setDate(windowStart.getDate() - WINDOW_DAYS)
+
+  const daysRented = daysRentedInWindow(c.rentals, windowStart, now)
+  const occGauge = Math.max(0, Math.min(6, Math.round((daysRented / WINDOW_DAYS) * 6)))
+  const earned = earnedInWindow(c.rentals, windowStart, now)
+
+  async function togglePause() {
+    setToggling(true)
+    try {
+      const form = new FormData()
+      form.set('is_available', c.status === 'paused' ? 'true' : 'false')
+      await carsApi.update(c.id, form)
+      onChanged()
+    } finally {
+      setToggling(false)
+    }
+  }
 
   return (
     <div className="car car--wide" style={{ marginBottom: 14, opacity: c.status === 'paused' ? 0.72 : 1 }}>
@@ -100,55 +122,41 @@ function CarRow({ hostCar: c }) {
             <span className={`st st--${STATUS_TONE[c.status]}`}>
               <span className="st__d" />
               {STATUS_LABEL[c.status].toUpperCase()}
-              {c.status === 'on_rent' && ` · ${c.renter.split(' ')[0].toUpperCase()} ${c.renter.split(' ')[1]?.[0] || ''}. · RETURNS IN ${c.returnsIn}D`}
-              {c.status === 'free' && ` · PARKED AT ${c.area.toUpperCase()}`}
-              {c.status === 'paused' && ' · INSURANCE NEEDS RENEWAL'}
+              {c.status === 'on_rent' && ` · ${renterName(c.activeRental).toUpperCase()}`}
+              {c.status === 'paused' && ' · HIDDEN FROM SEARCH'}
             </span>
             <div className="car__n" style={{ marginTop: 6 }}>
               {carTitle(c.car)}
             </div>
             <p className="car__alt">
               {c.status === 'on_rent'
-                ? `Moving now near ${c.area} · ${c.speed} km/h`
+                ? `Returns ${new Date(c.activeRental.drop_of_data_time).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`
                 : c.status === 'free'
-                  ? `Parked near ${c.area}`
-                  : `Paused since this week · ${c.area}`}
+                  ? 'Free to book now'
+                  : 'Paused — not shown to renters'}
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, auto)', gap: 26, textAlign: 'right' }}>
-            <Stat label="This month" value={money(c.monthEarned, { cents: false })} />
-            <Stat label="Days rented" value={`${c.daysRented} / ${c.daysAvailable}`} />
-            <Stat label="Km driven" value={c.kmDriven.toLocaleString('en-US')} />
-            <Stat label="Rating" value={c.rating} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, auto)', gap: 26, textAlign: 'right' }}>
+            <Stat label={`Last ${WINDOW_DAYS}d`} value={money(earned, { cents: false })} />
+            <Stat label="Days rented" value={`${daysRented} / ${WINDOW_DAYS}`} />
+            <Stat label="Rating" value={c.rating != null ? `${c.rating} ★` : '—'} />
           </div>
         </div>
         <div className="car__foot">
           {c.status === 'paused' ? (
-            <div className="small" style={{ color: 'var(--brick)', fontWeight: 500 }}>
-              Insurance certificate expired — the listing is hidden until you upload a new one.
+            <div className="small" style={{ color: 'var(--ink-45)' }}>
+              Not visible in search until you switch it back on.
             </div>
           ) : (
-            <Gauge filled={occGauge} caption={`${c.occupancyPct}% occupied${occGauge >= 5 ? ' — your best car' : ''}`} />
+            <Gauge filled={occGauge} caption={`${Math.round((daysRented / WINDOW_DAYS) * 100)}% booked, last ${WINDOW_DAYS}d`} />
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            {c.status === 'paused' ? (
-              <>
-                <Button size="sm">Upload insurance</Button>
-                <Button variant="signal" size="sm">
-                  Put back online
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link to={`/owner/cars/${c.id}`} className="btn btn--outline btn--sm">
-                  Live location
-                </Link>
-                <Button size="sm">Message renter</Button>
-                <Link to={`/owner/cars/${c.id}`} className="btn btn--pine btn--sm">
-                  Open car
-                </Link>
-              </>
-            )}
+            <Button size="sm" onClick={togglePause} disabled={toggling}>
+              {toggling ? 'Saving…' : c.status === 'paused' ? 'Put back online' : 'Pause listing'}
+            </Button>
+            <Link to={`/owner/cars/${c.id}`} className="btn btn--pine btn--sm">
+              Open car
+            </Link>
           </div>
         </div>
       </div>

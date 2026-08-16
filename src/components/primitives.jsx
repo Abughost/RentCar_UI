@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useEffect, useRef, useState } from 'react'
 
 /* ---------------------------------------------------------------- icons */
 
@@ -25,29 +25,86 @@ export function CarArt({ shape = 'sedan', className = '', ...rest }) {
 /* ---------------------------------------------------------------- odometer */
 
 /**
- * Cells for one rolling drum, top to bottom — which is also the order they pass the
- * window, so the sequence has to *count down* and land on `digit`. Built backwards from
- * the target: the last cell is the digit, the one above it is one higher, and so on.
+ * Cells for the mount reveal, top to bottom — which is also the order they pass the window,
+ * so the sequence has to *count down* and land on `digit`. Built backwards from the target:
+ * the last cell is the digit, the one above it is one higher, and so on.
  */
-function drumCells(digit, revolutions) {
+function revealCells(digit, revolutions) {
   const total = revolutions * 10 + 1
   return Array.from({ length: total }, (_, i) => (digit + (total - 1 - i)) % 10)
 }
 
 /**
- * The signature device: a mechanical odometer, used everywhere the product counts
- * something. The final digit always runs on the yellow trip-meter drum.
+ * Cells for turning a single wheel from `from` to `to` — the short trip a real odometer wheel
+ * makes when the number it's part of changes, as opposed to the long reveal spin above. Always
+ * turns the way `up` says, wrapping through 0 rather than reversing, exactly like a mechanical
+ * wheel: adding to the total turns every wheel forward (…8, 9, 0, 1…), even the ones that wrap.
+ */
+function turnCells(from, to, up) {
+  const steps = up ? (to - from + 10) % 10 : (from - to + 10) % 10
+  return Array.from({ length: steps + 1 }, (_, i) => (up ? (from + i) % 10 : (from - i + 10) % 10))
+}
+
+/** Longer than the reveal's own worst case (1.25s + 7 digits × 0.16s ≈ 2.4s) — see
+ *  `revealHeldRef` below for what this guards against. */
+const REVEAL_HOLD_MS = 2600
+
+/**
+ * The signature device: a mechanical odometer, used everywhere the product counts something.
+ * The final digit always runs on the yellow trip-meter drum.
  *
- * With `roll`, each drum spins down to its digit once on mount — the hero uses it to wind
- * the clock back to zero as the car pulls up. Drums to the right turn further and settle
- * later, so the row locks in left to right the way a real counter does. The rest state is
- * the finished number, so `prefers-reduced-motion` (which kills the animation outright in
- * tokens.css) simply shows the value with no roll.
+ * `roll` does two different things depending on whether this is the instance's first paint:
+ *
+ *   - First paint: the full reveal — every wheel spins down through a couple of revolutions
+ *     and lands on its digit, left to right. This is the "000000" winding back on the home
+ *     hero, or a price appearing for the first time.
+ *   - Every paint after that: only the wheels whose digit actually changed turn, and only as
+ *     far as the short trip from what they showed to what they show now — the total moving
+ *     from 1,000,000 to 1,500,000 turns just the one wheel that changed, 0 up through to 5,
+ *     while the leading 1 sits still. That is what makes it read as a counter ticking rather
+ *     than a slot machine spinning on every click.
+ *
+ * The comparison is against what THIS instance last painted, tracked in `prevRef` — so it
+ * survives re-renders but resets on a genuine remount (a different `key`), which is how a
+ * control that wants a fresh reveal (switching to a different car) asks for one.
  */
 export function Odometer({ value, size, unit, pad = 0, roll = false, className = '', ...rest }) {
   let chars = String(value ?? '')
   if (pad && chars.length < pad) chars = chars.padStart(pad, '0')
   const digits = chars.split('')
+
+  const prevRef = useRef(null)
+  const prevDigits = prevRef.current
+
+  // A parent settling shortly after mount (data finishing a fetch, StrictMode's double
+  // effect-invoke) re-renders this instance with the SAME value while the reveal is still
+  // meant to be playing. Without this, that re-render would see `prevDigits` already equal
+  // to the current value (the effect below had already written it) and cut straight to the
+  // static digits — the reveal never gets a chance to be seen. Holding it "not yet painted"
+  // for the reveal's own duration means every one of those re-renders still asks for the
+  // exact same reveal cells for an unchanged target digit, which React reconciles into the
+  // same DOM nodes without touching them — the CSS animation plays through undisturbed.
+  const revealHeldRef = useRef(false)
+  const firstPaint = prevDigits === null || revealHeldRef.current
+  useEffect(() => {
+    if (prevDigits !== null) return undefined
+    revealHeldRef.current = true
+    const t = setTimeout(() => {
+      revealHeldRef.current = false
+    }, REVEAL_HOLD_MS)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only ever meant to arm once, at the render that first found prevDigits null
+  }, [])
+
+  // Read before the render that will replace it — .current still holds what was last on
+  // screen. Direction is one call for the whole number, not per digit, so every wheel that
+  // moves turns the same way, the way a real counter's would.
+  const numeric = Number(chars.replace(/\D/g, ''))
+  const prevNumeric = prevDigits ? Number(prevDigits.replace(/\D/g, '')) : numeric
+  const increasing = numeric >= prevNumeric
+  useEffect(() => {
+    prevRef.current = chars
+  })
 
   const cls = ['odo', size === 'sm' && 'odo--sm', size === 'lg' && 'odo--lg', className]
     .filter(Boolean)
@@ -57,23 +114,31 @@ export function Odometer({ value, size, unit, pad = 0, roll = false, className =
     <div className={cls} {...rest}>
       {digits.map((d, i) => {
         const dCls = `odo__d${i === digits.length - 1 ? ' odo__d--trip' : ''}`
-        // Separators and the like have no drum to turn — they just sit there.
-        if (!roll || !/[0-9]/.test(d)) {
+        const prevD = firstPaint ? null : prevDigits[i]
+        const changed = prevD != null && prevD !== d
+        // Separators, an unchanged wheel, or roll switched off outright — nothing to turn,
+        // it just sits there.
+        if (!roll || !/[0-9]/.test(d) || (!firstPaint && !changed)) {
           return (
             <span key={i} className={dCls}>
               {d}
             </span>
           )
         }
-        const revolutions = 2 + i
+
+        const cells = firstPaint ? revealCells(Number(d), 2 + i) : turnCells(Number(prevD), Number(d), increasing)
+        // The reveal staggers left to right over ~2s; a short turn is quick regardless of
+        // position — a few extra wheels ticking over shouldn't make the row feel slower.
+        const spinMs = firstPaint ? 1250 + i * 160 : Math.min(140 + (cells.length - 1) * 90, 900)
+
         return (
           <span key={i} className={`${dCls} odo__d--roll`}>
             <span className="odo__win">
               <span
                 className="odo__strip"
-                style={{ '--roll': revolutions * 10, '--spin': `${1.25 + i * 0.16}s` }}
+                style={{ '--roll': cells.length - 1, '--spin': `${spinMs}ms` }}
               >
-                {drumCells(Number(d), revolutions).map((n, k) => (
+                {cells.map((n, k) => (
                   <span key={k}>{n}</span>
                 ))}
               </span>
@@ -83,6 +148,78 @@ export function Odometer({ value, size, unit, pad = 0, roll = false, className =
       })}
       {unit && <span className="odo__unit">{unit}</span>}
     </div>
+  )
+}
+
+/**
+ * An `Odometer` that becomes a typeable number on click.
+ *
+ * Digits type in as a sliding window on the field's own `pad`-digit buffer — keep typing past
+ * it and the oldest digit falls off the front, rather than the field silently refusing more
+ * input. Nothing overflows into a neighbour: the buffer lives entirely in this component's own
+ * state, so two of these placed side by side (a months field next to a days field) can never
+ * bleed into one another. Enter or clicking away commits, clamped into `[min, max]`; Escape
+ * cancels back to whatever was last committed.
+ */
+export function EditableDigits({ value, pad = 2, min = 1, max, unit, size, onCommit }) {
+  const [editing, setEditing] = useState(false)
+  const [buffer, setBuffer] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (!editing) return
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [editing])
+
+  function startEdit() {
+    setBuffer(String(value))
+    setEditing(true)
+  }
+
+  function commit() {
+    setEditing(false)
+    const n = parseInt(buffer, 10)
+    if (Number.isNaN(n)) return
+    onCommit(Math.max(min, Math.min(max, n)))
+  }
+
+  function handleChange(event) {
+    // Keeping only the last `pad` digits is the "shift" — anything typed past the field's
+    // width pushes the oldest digit out rather than getting rejected or spilling elsewhere.
+    setBuffer(event.target.value.replace(/\D/g, '').slice(-pad))
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === 'Enter') event.currentTarget.blur()
+    else if (event.key === 'Escape') setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        className={`odoEdit${size === 'sm' ? ' odoEdit--sm' : ''}`}
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={buffer}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onBlur={commit}
+        aria-label="Type an exact value"
+      />
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className="odoEdit__trigger"
+      onClick={startEdit}
+      aria-label={`${value}${unit ? ` ${unit.toLowerCase()}` : ''}. Click to type a different value.`}
+    >
+      <Odometer value={String(value)} pad={pad} unit={unit} roll size={size} />
+    </button>
   )
 }
 
