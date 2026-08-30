@@ -4,7 +4,7 @@ import { ApiError } from '../../api/client'
 import { auth as authApi, cars as carsApi, toList } from '../../api/endpoints'
 import { Alert, Button, CarArt, Checkbox, Field, Icon, Plate, SelectField, Steps } from '../../components/primitives'
 import { plateFor } from '../../lib/fleet'
-import { money } from '../../lib/pricing'
+import { money, recommendedTierPrice, TIERS } from '../../lib/pricing'
 import { useAuth } from '../../state/AuthContext'
 import { useOwner } from './useOwnerFleet'
 
@@ -77,6 +77,13 @@ export default function ListCar() {
   const [deposit, setDeposit] = useState(900)
   const [limitKm, setLimitKm] = useState(250)
 
+  const [tierPrices, setTierPrices] = useState({
+    one_to_three_day: '',
+    three_to_seven_day: '',
+    seven_to_thirty_day: '',
+    over_thirty_day: '',
+  })
+
   const [photos, setPhotos] = useState([])
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState(null)
@@ -133,6 +140,10 @@ export default function ListCar() {
     form.set('deposit', deposit)
     form.set('limit_km', limitKm)
     form.set('daily_price', dailyPrice)
+    TIERS.forEach((tier) => {
+      const typed = tierPrices[tier.key]
+      form.set(tier.key, typed === '' ? recommendedTierPrice(dailyPrice, tier.key) : typed)
+    })
     photos.forEach((p) => form.append('images', p.file))
 
     try {
@@ -304,6 +315,27 @@ export default function ListCar() {
                 <span className="tag tag--sage">Renters pay {money(dailyPrice, { cents: false })}</span>
                 <span className="tag">KM0 fee 20%</span>
                 <span className="tag tag--signal">You keep {money(youKeep, { cents: false })} a day</span>
+              </div>
+
+              <div style={{ marginTop: 22 }}>
+                <div className="fld__lab">Length discounts</div>
+                <p className="small" style={{ margin: '2px 0 10px' }}>
+                  Leave any of these blank to use the recommended price shown.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  {TIERS.map((tier) => (
+                    <Field
+                      key={tier.key}
+                      label={tier.label}
+                      type="number"
+                      min={0}
+                      placeholder={`${money(recommendedTierPrice(dailyPrice, tier.key), { cents: false })}/day`}
+                      value={tierPrices[tier.key]}
+                      onChange={(e) => setTierPrices((t) => ({ ...t, [tier.key]: e.target.value }))}
+                      trailing={<span className="small">/ day</span>}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
