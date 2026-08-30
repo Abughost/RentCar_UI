@@ -22,10 +22,17 @@ const DRAG_SLOP = 6
  *
  * `speed` is pixels per second: negative travels right to left, positive left to right. Letting
  * go hands the flick to the loop, which decays it back to `speed` on its own.
+ *
+ * When the children are few enough that one lap already fits the stage, none of that applies:
+ * the band renders a single static row at the left and never animates or loops.
  */
 export default function Marquee({ speed = -34, className = '', label, children }) {
   const [laps, setLaps] = useState(2)
   const [still, setStill] = useState(false)
+  // True once a single lap is measured to fit the stage on its own — nothing to loop, so the
+  // band sits still at the left instead of animating a row that never needed to scroll.
+  const [fits, setFits] = useState(false)
+  const paused = still || fits
 
   const stageRef = useRef(null)
   const trackRef = useRef(null)
@@ -74,9 +81,19 @@ export default function Marquee({ speed = -34, className = '', label, children }
       if (!width) return
       span.current = width + gap
 
+      // A lap that already fits the stage has nothing to loop — one copy, sat still at the left,
+      // rather than a row driven in a circle it never needed to travel.
+      const stageWidth = stage.getBoundingClientRect().width
+      const contentFits = width <= stageWidth
+      setFits(contentFits)
+      if (contentFits) {
+        setLaps((n) => (n === 1 ? n : 1))
+        return
+      }
+
       // One lap short of the stage would leave a hole at the wrap; keep laying laps down until
       // they cover the stage with a whole one to spare.
-      const need = Math.max(2, Math.ceil(stage.getBoundingClientRect().width / span.current) + 1)
+      const need = Math.max(2, Math.ceil(stageWidth / span.current) + 1)
       setLaps((n) => (n === need ? n : need))
     }
 
@@ -93,7 +110,7 @@ export default function Marquee({ speed = -34, className = '', label, children }
   // onWheel, because preventDefault needs a non-passive listener.
   useEffect(() => {
     const stage = stageRef.current
-    if (!stage || still) return undefined
+    if (!stage || paused) return undefined
 
     const onWheel = (event) => {
       // Only take the gesture when it is genuinely sideways — a plain vertical wheel has to go
@@ -113,12 +130,12 @@ export default function Marquee({ speed = -34, className = '', label, children }
 
     stage.addEventListener('wheel', onWheel, { passive: false })
     return () => stage.removeEventListener('wheel', onWheel)
-  }, [still, paint])
+  }, [paused, paint])
 
   /* ---------------------------------------------------------------- the loop */
 
   useEffect(() => {
-    if (still) return undefined
+    if (paused) return undefined
 
     let raf = 0
     let last = performance.now()
@@ -141,7 +158,7 @@ export default function Marquee({ speed = -34, className = '', label, children }
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [still, speed, paint])
+  }, [paused, speed, paint])
 
   // Keep the offset inside one lap in both directions, so the seam never comes round.
   function wrap() {
@@ -154,7 +171,7 @@ export default function Marquee({ speed = -34, className = '', label, children }
   /* ---------------------------------------------------------------- dragging */
 
   function handleDown(event) {
-    if (still || event.button > 0) return
+    if (paused || event.button > 0) return
     // Capture keeps the drag alive when the pointer leaves the stage. It throws for a pointer
     // id the element never saw, which is not worth losing the whole gesture over.
     try {
@@ -213,7 +230,7 @@ export default function Marquee({ speed = -34, className = '', label, children }
 
   return (
     <div
-      className={`mq${still ? ' mq--still' : ''} ${className}`.trim()}
+      className={`mq${paused ? ' mq--still' : ''} ${className}`.trim()}
       ref={stageRef}
       role="group"
       aria-label={label}

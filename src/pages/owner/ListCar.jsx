@@ -1,12 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { cars as carsApi, toList } from '../../api/endpoints'
-import { Alert, Button, CarArt, Icon, Plate, SelectField, Steps } from '../../components/primitives'
+import { ApiError } from '../../api/client'
+import { auth as authApi, cars as carsApi, toList } from '../../api/endpoints'
+import { Alert, Button, CarArt, Checkbox, Field, Icon, Plate, SelectField, Steps } from '../../components/primitives'
 import { plateFor } from '../../lib/fleet'
 import { money } from '../../lib/pricing'
+import { useAuth } from '../../state/AuthContext'
 import { useOwner } from './useOwnerFleet'
 
-const STEP_LABELS = ['The car', 'Price', 'Photos & review']
+const BASE_STEPS = ['The car', 'Price', 'Photos & review']
+const FULL_STEPS = ['Licence & ID', ...BASE_STEPS]
+
+const COUNTRIES = [
+  'Uzbekistan',
+  'Netherlands',
+  'Germany',
+  'France',
+  'Spain',
+  'Italy',
+  'Poland',
+  'Turkiye',
+  'United Kingdom',
+]
 
 const FUELS = [
   { value: 'gas', label: 'Petrol' },
@@ -34,7 +49,16 @@ const THIS_YEAR = new Date().getFullYear()
 export default function ListCar() {
   const navigate = useNavigate()
   const { refresh } = useOwner()
-  const [step, setStep] = useState(0)
+  const { isRegistered, refreshUser, user } = useAuth()
+  const needsLicence = !isRegistered
+  const [step, setStep] = useState(needsLicence ? 0 : 0)
+  const STEP_LABELS = needsLicence ? FULL_STEPS : BASE_STEPS
+  const carStep = needsLicence ? 1 : 0
+  const priceStep = needsLicence ? 2 : 1
+  const photoStep = needsLicence ? 3 : 2
+  const lastStep = STEP_LABELS.length - 1
+
+  const [licenceStatus, setLicenceStatus] = useState(null) // null | 'verifying' | 'approved' | 'rejected'
 
   const [brands, setBrands] = useState([])
   const [categories, setCategories] = useState([])
@@ -86,6 +110,13 @@ export default function ListCar() {
   const carReady = model.trim() && brand && category && color
   const priceReady = dailyPrice > 0
   const youKeep = Math.round(dailyPrice * 0.8)
+
+  const canContinue = () => {
+    if (needsLicence && step === 0) return false // licence step has its own submit
+    if (step === carStep) return carReady
+    if (step === priceStep) return priceReady
+    return true
+  }
 
   async function handlePublish() {
     setPublishing(true)
@@ -151,7 +182,27 @@ export default function ListCar() {
           </div>
         )}
 
-        {step === 0 && (
+        {needsLicence && step === 0 && (
+          <LicenceSection
+            user={user}
+            countries={COUNTRIES}
+            licenceStatus={licenceStatus}
+            onSubmit={async (form) => {
+              setLicenceStatus('verifying')
+              try {
+                await authApi.createProfile(form)
+                await refreshUser()
+                setLicenceStatus('approved')
+                setTimeout(() => setStep(1), 2200)
+              } catch (err) {
+                setLicenceStatus('rejected')
+                throw err
+              }
+            }}
+          />
+        )}
+
+        {step === carStep && !(needsLicence && step === 0) && (
           <>
             <p className="eyebrow" style={{ margin: '20px 0 10px' }}>
               Earn from a car that's parked
@@ -231,7 +282,7 @@ export default function ListCar() {
           </>
         )}
 
-        {step === 1 && (
+        {step === priceStep && (
           <>
             <div className="panel">
               <div className="panel__h">
@@ -279,7 +330,7 @@ export default function ListCar() {
           </>
         )}
 
-        {step === 2 && (
+        {step === photoStep && (
           <div className="panel" style={{ marginBottom: 0 }}>
             <div className="panel__h">
               <span className="panel__n">4</span>
@@ -325,27 +376,29 @@ export default function ListCar() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 26 }}>
-          {step > 0 && (
-            <Button onClick={() => setStep((s) => s - 1)}>
-              <Icon name="chev" size="sm" style={{ transform: 'rotate(180deg)' }} />
-              Back
-            </Button>
-          )}
-          {step < 2 ? (
-            <Button
-              variant="signal"
-              onClick={() => setStep((s) => s + 1)}
-              disabled={step === 0 ? !carReady : !priceReady}
-            >
-              Continue
-            </Button>
-          ) : (
-            <Button variant="signal" onClick={handlePublish} disabled={publishing || !carReady || !priceReady}>
-              {publishing ? 'Publishing…' : 'Publish listing'}
-            </Button>
-          )}
-        </div>
+        {!(needsLicence && step === 0) && (
+          <div style={{ display: 'flex', gap: 10, marginTop: 26 }}>
+            {step > (needsLicence ? 1 : 0) && (
+              <Button onClick={() => setStep((s) => s - 1)}>
+                <Icon name="chev" size="sm" style={{ transform: 'rotate(180deg)' }} />
+                Back
+              </Button>
+            )}
+            {step < lastStep ? (
+              <Button
+                variant="signal"
+                onClick={() => setStep((s) => s + 1)}
+                disabled={!canContinue()}
+              >
+                Continue
+              </Button>
+            ) : (
+              <Button variant="signal" onClick={handlePublish} disabled={publishing || !carReady || !priceReady}>
+                {publishing ? 'Publishing…' : 'Publish listing'}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* live preview */}
@@ -382,6 +435,11 @@ export default function ListCar() {
           <p className="eyebrow" style={{ margin: '0 0 14px' }}>
             Before you publish
           </p>
+          {needsLicence && (
+            <Tip ok={licenceStatus === 'approved'}>
+              {licenceStatus === 'approved' ? 'Licence verified' : 'Licence & ID verification'}
+            </Tip>
+          )}
           <Tip ok={!!carReady}>Model, brand, body type and colour set</Tip>
           <Tip ok={priceReady}>Daily price set</Tip>
           <Tip ok={photos.length > 0} last>
@@ -402,6 +460,310 @@ function Tip({ ok, last, children }) {
         style={{ color: ok ? 'var(--verified)' : 'var(--ink-45)', flex: 'none', marginTop: 2 }}
       />
       <span>{children}</span>
+    </div>
+  )
+}
+
+function LicenceSection({ user, countries, licenceStatus, onSubmit }) {
+  const [form, setForm] = useState({
+    first_name: '',
+    last_name: '',
+    data_of_birth: '',
+    driver_licence_number: '',
+    driver_licence_date_of_issue: '',
+    id_card_number: '',
+    personal_number: '',
+  })
+  const [country, setCountry] = useState(countries[0])
+  const [expires, setExpires] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
+  const [docs, setDocs] = useState({ front: null, back: null })
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (user) {
+      setForm((f) => ({
+        ...f,
+        first_name: f.first_name || user.first_name || '',
+        last_name: f.last_name || user.last_name || '',
+      }))
+    }
+  }, [user])
+
+  function set(key, value) {
+    setForm((f) => ({ ...f, [key]: value }))
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    setError(null)
+    setFieldErrors({})
+    setBusy(true)
+    try {
+      await onSubmit(form)
+    } catch (err) {
+      if (err instanceof ApiError && err.data && typeof err.data === 'object') {
+        setFieldErrors(err.data)
+      }
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const errorFor = (key) => {
+    const v = fieldErrors[key]
+    if (!v) return null
+    return Array.isArray(v) ? String(v[0]) : String(v)
+  }
+
+  if (licenceStatus === 'verifying' || licenceStatus === 'approved' || licenceStatus === 'rejected') {
+    return <VerificationAnimation status={licenceStatus} />
+  }
+
+  return (
+    <>
+      <p className="eyebrow" style={{ margin: '20px 0 10px' }}>
+        Before you list a car
+      </p>
+      <h1 className="dh2" style={{ marginBottom: 8 }}>
+        Verify your licence & ID
+      </h1>
+      <p className="lede" style={{ marginBottom: 26, maxWidth: '56ch' }}>
+        We need your driving licence and ID card on file before you can list a car. This is a
+        one-time step — after this, every listing is instant.
+      </p>
+
+      {error && (
+        <div style={{ marginBottom: 16 }}>
+          <Alert>{error}</Alert>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <div className="panel__h">
+            <span className="panel__n"><Icon name="user" size="sm" /></span>
+            <h2 className="dh3">Personal details</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <Field
+              label="First name"
+              name="first_name"
+              autoComplete="given-name"
+              value={form.first_name}
+              onChange={(e) => set('first_name', e.target.value)}
+              error={errorFor('first_name')}
+              required
+            />
+            <Field
+              label="Last name"
+              name="last_name"
+              autoComplete="family-name"
+              value={form.last_name}
+              onChange={(e) => set('last_name', e.target.value)}
+              error={errorFor('last_name')}
+              required
+            />
+            <Field
+              label="Date of birth"
+              name="data_of_birth"
+              type="date"
+              icon="cal"
+              value={form.data_of_birth}
+              onChange={(e) => set('data_of_birth', e.target.value)}
+              error={errorFor('data_of_birth')}
+              required
+            />
+            <Field
+              label="Personal number"
+              name="personal_number"
+              maxLength={14}
+              placeholder="12345678901234"
+              value={form.personal_number}
+              onChange={(e) => set('personal_number', e.target.value)}
+              error={errorFor('personal_number')}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <div className="panel__h">
+            <span className="panel__n"><Icon name="card" size="sm" /></span>
+            <h2 className="dh3">Driving licence</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <SelectField label="Country of issue" value={country} onChange={(e) => setCountry(e.target.value)}>
+              {countries.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </SelectField>
+            <Field
+              label="Licence number"
+              name="driver_licence_number"
+              maxLength={9}
+              placeholder="AB1234567"
+              hint="9 characters, from the front of the card."
+              value={form.driver_licence_number}
+              onChange={(e) => set('driver_licence_number', e.target.value.toUpperCase())}
+              error={errorFor('driver_licence_number')}
+              required
+            />
+            <Field
+              label="Date of issue"
+              name="driver_licence_date_of_issue"
+              type="date"
+              value={form.driver_licence_date_of_issue}
+              onChange={(e) => set('driver_licence_date_of_issue', e.target.value)}
+              error={errorFor('driver_licence_date_of_issue')}
+              required
+            />
+            <Field
+              label="Expires"
+              type="date"
+              value={expires}
+              onChange={(e) => setExpires(e.target.value)}
+              hint={
+                expires && new Date(expires) > new Date() ? 'Covers your trip.' : 'Must outlast the rental.'
+              }
+            />
+          </div>
+        </div>
+
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <div className="panel__h">
+            <span className="panel__n"><Icon name="doc" size="sm" /></span>
+            <h2 className="dh3">ID card</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <Field
+              label="ID card number"
+              name="id_card_number"
+              maxLength={9}
+              placeholder="AA1234567"
+              value={form.id_card_number}
+              onChange={(e) => set('id_card_number', e.target.value.toUpperCase())}
+              error={errorFor('id_card_number')}
+              required
+            />
+          </div>
+          <LicenceUpload
+            label="Front of the card"
+            file={docs.front}
+            onPick={(file) => setDocs((d) => ({ ...d, front: file }))}
+          />
+          <div style={{ height: 14 }} />
+          <LicenceUpload
+            label="Back of the card"
+            file={docs.back}
+            onPick={(file) => setDocs((d) => ({ ...d, back: file }))}
+          />
+          <p className="small" style={{ margin: '8px 0 0' }}>
+            Photos stay on this device — only the numbers above are stored.
+          </p>
+        </div>
+
+        <Checkbox
+          checked={confirmed}
+          onChange={(e) => setConfirmed(e.target.checked)}
+          className="check"
+        >
+          I confirm the licence is mine and currently valid.
+        </Checkbox>
+
+        <button
+          type="submit"
+          className="btn btn--signal btn--block btn--lg"
+          style={{ marginTop: 20 }}
+          disabled={busy || !confirmed}
+        >
+          {busy ? 'Verifying…' : 'Verify and continue'}
+        </button>
+      </form>
+    </>
+  )
+}
+
+function VerificationAnimation({ status }) {
+  const isApproved = status === 'approved'
+  const isRejected = status === 'rejected'
+  const isVerifying = status === 'verifying'
+
+  return (
+    <div className="licence-verify" role="status">
+      <div className={`licence-verify__ring ${isVerifying ? 'licence-verify__ring--spin' : ''} ${isApproved ? 'licence-verify__ring--ok' : ''} ${isRejected ? 'licence-verify__ring--fail' : ''}`}>
+        {isVerifying && (
+          <svg viewBox="0 0 80 80" className="licence-verify__spinner">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="var(--bone-300)" strokeWidth="4" />
+            <circle cx="40" cy="40" r="34" fill="none" stroke="var(--signal)" strokeWidth="4" strokeDasharray="70 144" strokeLinecap="round" className="licence-verify__arc" />
+          </svg>
+        )}
+        {isApproved && (
+          <div className="licence-verify__icon licence-verify__icon--ok">
+            <Icon name="check" size="lg" />
+          </div>
+        )}
+        {isRejected && (
+          <div className="licence-verify__icon licence-verify__icon--fail">
+            <Icon name="x" size="lg" />
+          </div>
+        )}
+      </div>
+
+      <h2 className="dh3" style={{ marginTop: 24, textAlign: 'center' }}>
+        {isVerifying && 'Verifying your documents…'}
+        {isApproved && 'Licence approved'}
+        {isRejected && 'Verification failed'}
+      </h2>
+      <p className="small" style={{ textAlign: 'center', maxWidth: '40ch', margin: '8px auto 0' }}>
+        {isVerifying && 'Checking your licence and ID card details. This only takes a moment.'}
+        {isApproved && "You’re all set. Moving you to the next step now…"}
+        {isRejected && 'Something went wrong. Please go back and check your details.'}
+      </p>
+    </div>
+  )
+}
+
+function LicenceUpload({ label, file, onPick }) {
+  const input = useRef(null)
+
+  return (
+    <div className="upload" style={file ? undefined : { borderColor: 'var(--pine-700)', background: 'rgba(25,74,62,.05)' }}>
+      <span
+        className="upload__ic"
+        style={file ? undefined : { background: 'var(--bone-200)', color: 'var(--ink-45)' }}
+      >
+        <Icon name={file ? 'doc' : 'plus'} size="lg" />
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{label}</div>
+        <div className="small" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {file
+            ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`
+            : 'Drop a photo here, or take one with your phone camera.'}
+        </div>
+      </div>
+      {file ? (
+        <span className="tag tag--sage">
+          <Icon name="check" size="sm" />
+          Ready
+        </span>
+      ) : (
+        <Button size="sm" onClick={() => input.current?.click()}>
+          Choose file
+        </Button>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        aria-label={label}
+        onChange={(e) => onPick(e.target.files?.[0] || null)}
+      />
     </div>
   )
 }
