@@ -331,7 +331,13 @@ export default function ListCar() {
                       min={0}
                       placeholder={`${money(recommendedTierPrice(dailyPrice, tier.key), { cents: false })}/day`}
                       value={tierPrices[tier.key]}
-                      onChange={(e) => setTierPrices((t) => ({ ...t, [tier.key]: e.target.value }))}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        setTierPrices((t) => ({
+                          ...t,
+                          [tier.key]: raw === '' ? '' : Math.max(0, Number(raw)),
+                        }))
+                      }}
                       trailing={<span className="small">/ day</span>}
                     />
                   ))}

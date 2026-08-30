@@ -26,9 +26,10 @@ import { coverOptions, km, money, quote, rateTable, TIERS } from '../lib/pricing
 import { useAuth } from '../state/AuthContext'
 import { useBooking } from '../state/BookingContext'
 
-// TIERS tops out at 30 — beyond that the customer is choosing a return date, not nudging a
-// number, so the length stops being bracket-priced and just keeps the last bracket's rate
-// (tierForDays already falls back to it for anything past 30; see lib/pricing.js).
+// TIERS tops out at an open-ended 30+ bracket — beyond that the customer is choosing a return
+// date, not nudging a number, so the day-stepper hands off to the calendar. That 30+ bracket
+// (over_thirty_day) is a real, separately owner-priced tier, not a fallback onto the bracket
+// below it — see lib/pricing.js.
 const MAX_RENTAL_DAYS = 365
 const DAYS_PER_MONTH = 30
 
@@ -131,7 +132,7 @@ export default function CarDetail() {
   /**
    * Picks a day count inside a bracket that unambiguously resolves back to it —
    * `tierForDays` matches the first bracket whose range contains the count, so a boundary
-   * value (3, 7, 15) would silently land in the bracket below the one that was clicked.
+   * value (3, 7, 30) would silently land in the bracket below the one that was clicked.
    * The midpoint always clears that.
    */
   function selectBracket(tierKey) {
