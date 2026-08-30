@@ -651,7 +651,7 @@
 .acc__t { font-weight: 600; font-size: 14.5px; flex: 1; }
 .acc__body { padding: 0 0 18px; font-size: 13.5px; color: var(--ink-70); line-height: 1.6; border-bottom: 1px solid var(--bone-200); }
 
-.pricetiers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--bone-200); border: 1px solid var(--bone-200); border-radius: var(--r-m); overflow: hidden; margin-top: 14px; }
+.pricetiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--bone-200); border: 1px solid var(--bone-200); border-radius: var(--r-m); overflow: hidden; margin-top: 14px; }
 /* Wraps the 30+ card so its calendar popover has something to anchor to without nesting an
    interactive dialog inside the <button> itself. */
 .pricetier-wrap { position: relative; background: var(--bone-200); }

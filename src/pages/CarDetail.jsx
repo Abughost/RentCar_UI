@@ -347,33 +347,28 @@ export default function CarDetail() {
                 highlighted bracket — pick another to re-price it, or type an exact length below.
               </p>
               <div className="pricetiers">
-                {tiers.map((tier, i) => {
-                  // tierForDays falls back to this same bracket for anything past 30 days —
-                  // correct for pricing (it is genuinely the rate in effect), but the 30+ card
-                  // below is what should carry the highlight once the rental is that long, or
-                  // two brackets would light up for one rental.
-                  const isLastTier = i === tiers.length - 1
-                  return (
-                    <button
-                      key={tier.key}
-                      type="button"
-                      className={`pricetier${tier.active && !(isLastTier && overAMonth) ? ' is-on' : ''}`}
-                      onClick={() => selectBracket(tier.key)}
-                      disabled={!tier.amount}
-                    >
-                      <div className="pricetier__k">{tier.label}</div>
-                      <div className="pricetier__v">
-                        {tier.amount ? money(tier.amount, { cents: false }) : '—'}
-                      </div>
-                    </button>
-                  )
-                })}
+                {/* over_thirty_day is the last TIERS entry and gets its own dedicated tile
+                    below (with the calendar), not a normal clickable button here — so only
+                    the three finite brackets render in this loop. */}
+                {tiers.slice(0, -1).map((tier) => (
+                  <button
+                    key={tier.key}
+                    type="button"
+                    className={`pricetier${tier.active ? ' is-on' : ''}`}
+                    onClick={() => selectBracket(tier.key)}
+                    disabled={!tier.amount}
+                  >
+                    <div className="pricetier__k">{tier.label}</div>
+                    <div className="pricetier__v">
+                      {tier.amount ? money(tier.amount, { cents: false }) : '—'}
+                    </div>
+                  </button>
+                ))}
 
-                {/* CarPrice has no rate past half_to_one_month, so this reads the same figure
-                    the backend already falls back to for anything longer (see tierForDays in
-                    lib/pricing.js) — the bracket doesn't invent a price, it just names the one
-                    that already applies. Picking a length this long is a date, not a nudge, so
-                    it opens the calendar instead of jumping to a midpoint. */}
+                {/* over_thirty_day is a real, owner-set bracket (CarPrice.over_thirty_day) —
+                    this tile prices itself the same as any other. It still opens the calendar
+                    instead of jumping to a midpoint on click, since "30+ days" has no finite
+                    midpoint to nudge to. */}
                 <div className="pricetier-wrap">
                   <button
                     type="button"
