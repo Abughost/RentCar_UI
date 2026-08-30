@@ -10,9 +10,22 @@
 export const TIERS = [
   { key: 'one_to_three_day', label: '1–3 days', min: 1, max: 3 },
   { key: 'three_to_seven_day', label: '3–7 days', min: 3, max: 7 },
-  { key: 'seven_to_half_month', label: '7–15 days', min: 7, max: 15 },
-  { key: 'half_to_one_month', label: '15–30 days', min: 15, max: 30 },
+  { key: 'seven_to_thirty_day', label: '7–30 days', min: 7, max: 30 },
+  { key: 'over_thirty_day', label: '30+ days', min: 30, max: Infinity },
 ]
+
+// Flat percentage off `daily_price` a bracket defaults to when an owner leaves it blank —
+// never compounded per day. Mirrors apps/pricing.py's RECOMMENDED_DISCOUNT.
+const RECOMMENDED_DISCOUNT = {
+  one_to_three_day: 0.005,
+  three_to_seven_day: 0.01,
+  seven_to_thirty_day: 0.03,
+  over_thirty_day: 0.05,
+}
+
+export function recommendedTierPrice(dailyPrice, tierKey) {
+  return Math.round(dailyPrice * (1 - RECOMMENDED_DISCOUNT[tierKey]))
+}
 
 /** Local tax, applied to the rental subtotal. Matches the 9% shown in the design. */
 export const TAX_RATE = 0.09
