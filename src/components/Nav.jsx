@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { fullName, initials, useAuth } from '../state/AuthContext'
+import { mediaUrl } from '../api/client'
 import ModeSwitch from './ModeSwitch'
 import ThemeToggle from './ThemeToggle'
 import { Button, Icon } from './primitives'
@@ -85,8 +86,17 @@ export default function Nav({ tone = 'light', minimal = false, notice }) {
         <ThemeToggle compact />
         {isAuthenticated ? (
           <>
-            <Link to="/account" className="avatar" title={fullName(user)} aria-label="Account">
-              {initials(user)}
+            <Link
+              to={user?.account_type === 'owner' ? '/owner' : '/account'}
+              className="avatar"
+              title={fullName(user)}
+              aria-label="Account"
+            >
+              {user?.photo ? (
+                <img src={mediaUrl(user.photo)} alt="" className="avatar__photo" />
+              ) : (
+                initials(user)
+              )}
             </Link>
             <Button variant={tone === 'light' ? 'outline' : 'onDark'} size="sm" onClick={handleSignOut}>
               Sign out

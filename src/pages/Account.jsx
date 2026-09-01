@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cars as carsApi, rentals as rentalsApi, toList } from '../api/endpoints'
+import { mediaUrl } from '../api/client'
+import { auth as authApi, cars as carsApi, rentals as rentalsApi, toList } from '../api/endpoints'
 import {
   Alert,
   Button,
@@ -15,12 +16,12 @@ import { daysBetween, formatRange, formatWhen, tripProgress } from '../lib/dates
 import { bodyShape, bookingRef, carTitle, plateFor } from '../lib/fleet'
 import { coverOptions, money, quote } from '../lib/pricing'
 import { SECTIONS } from './RentingLayout'
-import { useAuth } from '../state/AuthContext'
+import { fullName, initials, useAuth } from '../state/AuthContext'
 
 /** Frame 08. */
 export default function Account() {
   const { section = 'trips' } = useParams()
-  const { user } = useAuth()
+  const { user, isClient } = useAuth()
   const navigate = useNavigate()
 
   const [bookings, setBookings] = useState([])
@@ -29,7 +30,13 @@ export default function Account() {
   const [error, setError] = useState(null)
   const [cancelling, setCancelling] = useState(null)
 
+  const showTrips = isClient && section === 'trips'
+
   const load = useCallback(() => {
+    if (!showTrips) {
+      setLoading(false)
+      return () => {}
+    }
     const ac = new AbortController()
     setLoading(true)
 
@@ -40,7 +47,6 @@ export default function Account() {
         setBookings(list)
         setError(null)
 
-        // Rentals carry only the car's UUID, so hydrate the ones on screen.
         const ids = [...new Set(list.map((r) => r.car).filter(Boolean))]
         const fetched = await Promise.all(
           ids.map((id) => carsApi.detail(id, { signal: ac.signal }).catch(() => null)),
@@ -57,7 +63,7 @@ export default function Account() {
       })
 
     return () => ac.abort()
-  }, [])
+  }, [showTrips])
 
   useEffect(() => load(), [load])
 
@@ -339,10 +345,6 @@ function UpcomingTrip({ booking, car, total, busy, onCancel }) {
   )
 }
 
-/**
- * The sidebar sections the API has no endpoints for yet. Rather than pretend, each one says
- * what it will hold and points at the thing that does work today.
- */
 function OtherSection({ section, user }) {
   const COPY = {
     licence: {
@@ -367,14 +369,9 @@ function OtherSection({ section, user }) {
       body: 'Each finished trip has a voucher with the full breakdown. Open one from the past-trips table.',
       action: { to: '/account/trips', label: 'Back to trips' },
     },
-    settings: {
-      title: 'Settings',
-      body: `Signed in as ${user?.contact || '—'}. Contact details are set during sign-up and cannot be changed from here yet.`,
-      action: null,
-    },
   }
 
-  const copy = COPY[section] || COPY.settings
+  const copy = COPY[section] || COPY.licence
 
   return (
     <div className="empty" style={{ textAlign: 'left' }}>
@@ -389,6 +386,330 @@ function OtherSection({ section, user }) {
           {copy.action.label}
         </Link>
       )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ settings */
+
+const SETTINGS_TABS = [
+  { id: 'general', label: 'General', icon: 'gear' },
+  { id: 'account', label: 'Account', icon: 'user' },
+  { id: 'documents', label: 'Documents', icon: 'doc' },
+  { id: 'session', label: 'Session', icon: 'shield' },
+]
+
+export function SettingsPanel({ onClose }) {
+  const { user, signOut, setUser } = useAuth()
+  const navigate = useNavigate()
+  const fileRef = useRef(null)
+  const overlayRef = useRef(null)
+
+  const [tab, setTab] = useState('general')
+  const [form, setForm] = useState({ username: '', first_name: '', last_name: '' })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [switchingType, setSwitchingType] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setForm({
+        username: user.username || '',
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+      })
+    }
+  }, [user])
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError(null)
+    const fd = new FormData()
+    fd.append('photo', file)
+    try {
+      const updated = await authApi.updateUser(fd)
+      setUser(updated)
+      setSuccess('Photo updated.')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleSaveProfile(e) {
+    e.preventDefault()
+    setError(null)
+    setBusy(true)
+    const fd = new FormData()
+    fd.append('username', form.username.trim())
+    fd.append('first_name', form.first_name.trim())
+    fd.append('last_name', form.last_name.trim())
+    try {
+      const updated = await authApi.updateUser(fd)
+      setUser(updated)
+      setSuccess('Profile saved.')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleSwitchType() {
+    setSwitchingType(true)
+    setError(null)
+    const newType = user.account_type === 'owner' ? 'client' : 'owner'
+    const fd = new FormData()
+    fd.append('account_type', newType)
+    try {
+      const updated = await authApi.updateUser(fd)
+      setUser(updated)
+      setSuccess(`Switched to ${newType === 'owner' ? 'hosting' : 'renting'} mode.`)
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSwitchingType(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setError(null)
+    try {
+      await authApi.deleteAccount()
+      signOut()
+      navigate('/')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const photoUrl = user?.photo ? mediaUrl(user.photo) : null
+  const isOwner = user?.account_type === 'owner'
+
+  return (
+    <div className="stmod" ref={overlayRef} onClick={(e) => { if (e.target === overlayRef.current) onClose() }}>
+      <div className="stmod__box">
+        <aside className="stmod__side">
+          <p className="stmod__ht">Settings</p>
+          {SETTINGS_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`stmod__tab${tab === t.id ? ' is-on' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              <Icon name={t.icon} size="sm" />
+              {t.label}
+            </button>
+          ))}
+        </aside>
+
+        <div className="stmod__main">
+          <button type="button" className="stmod__close" onClick={onClose}>
+            <Icon name="x" size="sm" />
+          </button>
+
+          {error && <div style={{ marginBottom: 16 }}><Alert>{error}</Alert></div>}
+          {success && <div style={{ marginBottom: 16 }}><Alert tone="ok">{success}</Alert></div>}
+
+          {tab === 'general' && (
+            <>
+              <h2 className="stmod__title">Profile</h2>
+
+              <div className="stmod__row">
+                <span className="stmod__label">Avatar</span>
+                <div className="scard__avatar" onClick={() => fileRef.current?.click()} style={{ marginLeft: 'auto' }}>
+                  {photoUrl ? (
+                    <img src={photoUrl} alt="" className="scard__photo" />
+                  ) : (
+                    <span className="scard__initials">{initials(user)}</span>
+                  )}
+                  <span className="scard__overlay">
+                    <Icon name="plus" size="sm" />
+                  </span>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handlePhotoChange}
+                  />
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveProfile}>
+                <div className="stmod__row">
+                  <label className="stmod__label">Full name</label>
+                  <div className="stmod__fields">
+                    <div className="fld">
+                      <div className="fld__box">
+                        <input
+                          value={form.first_name}
+                          onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                          placeholder="First name"
+                        />
+                      </div>
+                    </div>
+                    <div className="fld">
+                      <div className="fld__box">
+                        <input
+                          value={form.last_name}
+                          onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                          placeholder="Last name"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="stmod__row">
+                  <label className="stmod__label">Username</label>
+                  <div className="fld" style={{ flex: 1 }}>
+                    <div className="fld__box">
+                      <input
+                        value={form.username}
+                        onChange={(e) => setForm({ ...form, username: e.target.value })}
+                        placeholder="Username"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="stmod__row">
+                  <label className="stmod__label">Contact</label>
+                  <span className="small">{user?.contact || '—'}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                  <button type="submit" className="btn btn--signal btn--sm" disabled={busy}>
+                    {busy ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {tab === 'account' && (
+            <>
+              <h2 className="stmod__title">Account</h2>
+
+              <div className="stmod__row">
+                <div>
+                  <div className="stmod__label">Account type</div>
+                  <p className="small" style={{ marginTop: 4 }}>
+                    {isOwner
+                      ? 'You are currently hosting. Switch to renting to book cars.'
+                      : 'You are currently renting. Switch to hosting to list cars.'}
+                  </p>
+                </div>
+                <div className="actype actype--sm" style={{ marginLeft: 'auto', minWidth: 200 }}>
+                  <button
+                    type="button"
+                    className={`actype__btn${!isOwner ? ' is-on' : ''}`}
+                    onClick={!isOwner ? undefined : handleSwitchType}
+                    disabled={switchingType}
+                  >
+                    <Icon name="key" size="sm" /> Renting
+                  </button>
+                  <button
+                    type="button"
+                    className={`actype__btn${isOwner ? ' is-on' : ''}`}
+                    onClick={isOwner ? undefined : handleSwitchType}
+                    disabled={switchingType}
+                  >
+                    <Icon name="route" size="sm" /> Hosting
+                  </button>
+                  <span className="actype__thumb" style={{ transform: isOwner ? 'translateX(100%)' : 'translateX(0)' }} />
+                </div>
+              </div>
+
+              <div className="stmod__divider" />
+
+              <h2 className="stmod__title" style={{ color: 'var(--brick)' }}>Danger zone</h2>
+              <p className="small" style={{ marginBottom: 14 }}>
+                Permanently deactivate your account. This cannot be undone.
+              </p>
+              {showDeleteConfirm ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span className="small" style={{ fontWeight: 600, color: 'var(--brick)' }}>
+                    Are you sure?
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    style={{ background: 'var(--brick)', color: '#fff', borderColor: 'var(--brick)' }}
+                    onClick={handleDeleteAccount}
+                  >
+                    Yes, delete
+                  </button>
+                  <Button size="sm" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(true)}>
+                  Delete account
+                </Button>
+              )}
+            </>
+          )}
+
+          {tab === 'documents' && (
+            <>
+              <h2 className="stmod__title">Licence & ID</h2>
+              <div className="stmod__row">
+                <div>
+                  <div className="stmod__label">Driving licence</div>
+                  <p className="small" style={{ marginTop: 4 }}>
+                    {user?.is_registered
+                      ? 'Your driving licence and ID card are verified and on file.'
+                      : 'No licence registered yet. Add it to unlock bookings.'}
+                  </p>
+                </div>
+                {user?.is_registered ? (
+                  <Tag tone="sage" icon="check">Verified</Tag>
+                ) : (
+                  <Link to="/register/licence" className="btn btn--pine btn--sm" onClick={onClose}>
+                    Add licence
+                  </Link>
+                )}
+              </div>
+            </>
+          )}
+
+          {tab === 'session' && (
+            <>
+              <h2 className="stmod__title">Session</h2>
+              <div className="scard__session">
+                <div className="scard__sessionDot" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Current session</div>
+                  <p className="small">Signed in as {user?.contact || '—'}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    signOut()
+                    navigate('/signin')
+                  }}
+                >
+                  Sign out
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

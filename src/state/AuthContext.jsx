@@ -128,9 +128,10 @@ export function AuthProvider({ children }) {
       refreshUser,
       setUser: persist,
       isAuthenticated: !!user,
-      /** Staff skip the OTP flow entirely, so they count as registered. */
       isRegistered: !!user && (user.is_registered || user.is_staff || user.role === 'admin' || user.role === 'moderator'),
       isStaff: !!user && (user.is_staff || user.role === 'admin' || user.role === 'moderator'),
+      isOwner: !!user && user.account_type === 'owner',
+      isClient: !!user && (user.account_type === 'client' || !user.account_type),
     }),
     [user, loading, signIn, signOut, adoptSession, refreshUser, persist],
   )

@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { mediaUrl } from '../../api/client'
 import Nav from '../../components/Nav'
 import { Icon } from '../../components/primitives'
 import { money } from '../../lib/pricing'
 import { fullName, initials, useAuth } from '../../state/AuthContext'
+import { SettingsPanel } from '../Account'
 import { useOwnerFleet } from './useOwnerFleet'
 
 /**
@@ -26,6 +29,7 @@ export default function OwnerLayout() {
   const owner = useOwnerFleet()
   const { fleet, nextPayout } = owner
   const location = useLocation()
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <div className="page">
@@ -62,9 +66,17 @@ export default function OwnerLayout() {
                 </div>
               </div>
             )}
-            <div className="side__u" style={{ border: 0, padding: 0, margin: 0 }}>
+            <button
+              type="button"
+              className="side__trigger"
+              onClick={() => setSettingsOpen(true)}
+            >
               <span className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
-                {initials(user)}
+                {user?.photo ? (
+                  <img src={mediaUrl(user.photo)} alt="" className="avatar__photo" />
+                ) : (
+                  initials(user)
+                )}
               </span>
               <div>
                 <div className="side__n">{fullName(user)}</div>
@@ -72,7 +84,7 @@ export default function OwnerLayout() {
                   HOST · {fleet.length} CAR{fleet.length === 1 ? '' : 'S'} · 4.9★
                 </div>
               </div>
-            </div>
+            </button>
           </div>
         </aside>
 
@@ -80,6 +92,8 @@ export default function OwnerLayout() {
           <Outlet context={owner} key={location.pathname} />
         </main>
       </div>
+
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }

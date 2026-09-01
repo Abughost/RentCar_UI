@@ -1,13 +1,34 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { useAuth } from '../state/AuthContext'
 
-/**
- * Renting/hosting mode switch. Lives in the shared Nav so it's visible on every
- * authenticated page — including the owner shell, which used to bury its own copy
- * in the sidebar and lose the top bar entirely.
- */
 export default function ModeSwitch({ onNavigate }) {
   const { pathname } = useLocation()
+  const { isOwner, isClient } = useAuth()
   const isHosting = pathname.startsWith('/owner')
+
+  if (isOwner) {
+    return (
+      <NavLink
+        to="/owner"
+        className={({ isActive }) => (isActive || isHosting ? 'is-on' : undefined)}
+        onClick={onNavigate}
+      >
+        My cars
+      </NavLink>
+    )
+  }
+
+  if (isClient) {
+    return (
+      <NavLink
+        to="/cars"
+        className={({ isActive }) => (isActive ? 'is-on' : undefined)}
+        onClick={onNavigate}
+      >
+        Find a car
+      </NavLink>
+    )
+  }
 
   return (
     <div className="modesw" data-on={isHosting ? 'host' : 'rent'}>

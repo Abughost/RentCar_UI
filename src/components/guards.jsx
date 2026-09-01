@@ -14,7 +14,6 @@ function Booting() {
   )
 }
 
-/** Signed in, or bounced to sign-in with somewhere to come back to. */
 export function RequireAuth({ children }) {
   const { isAuthenticated, loading } = useAuth()
   const location = useLocation()
@@ -24,16 +23,33 @@ export function RequireAuth({ children }) {
   return children
 }
 
-/**
- * Signed in *and* carrying a UserProfile. The backend's IsRegisteredUser rejects a booking
- * without one, so the licence step is enforced here rather than letting the POST 400.
- */
 export function RequireProfile({ children }) {
-  const { isAuthenticated, isRegistered, loading } = useAuth()
+  const { isAuthenticated, isRegistered, isClient, loading } = useAuth()
   const location = useLocation()
 
   if (loading) return <Booting />
   if (!isAuthenticated) return <Navigate to="/signin" state={{ from: location }} replace />
+  if (!isClient) return <Navigate to="/owner" replace />
   if (!isRegistered) return <Navigate to="/register/licence" state={{ from: location }} replace />
+  return children
+}
+
+export function RequireOwner({ children }) {
+  const { isAuthenticated, isOwner, loading } = useAuth()
+  const location = useLocation()
+
+  if (loading) return <Booting />
+  if (!isAuthenticated) return <Navigate to="/signin" state={{ from: location }} replace />
+  if (!isOwner) return <Navigate to="/account" replace />
+  return children
+}
+
+export function RequireClient({ children }) {
+  const { isAuthenticated, isClient, loading } = useAuth()
+  const location = useLocation()
+
+  if (loading) return <Booting />
+  if (!isAuthenticated) return <Navigate to="/signin" state={{ from: location }} replace />
+  if (!isClient) return <Navigate to="/owner" replace />
   return children
 }

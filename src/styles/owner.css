@@ -8,13 +8,14 @@
    day/week/month/year period switch.
    ============================================================ */
 
-.hostshell { display: grid; grid-template-columns: 250px 1fr; flex: 1; }
+.hostshell { display: grid; grid-template-columns: 250px 1fr; flex: 1; min-height: 0; }
 
 /* The light/dark colour switch lives with .side in pages.css — both panels share it.
    This just adds the flex layout specific to the host shell. */
 .hside {
   background: var(--bone-050); color: var(--ink); border-right: 1px solid var(--bone-200);
   padding: 26px 20px; display: flex; flex-direction: column;
+  position: sticky; top: 75px; height: calc(100vh - 75px); overflow-y: auto;
 }
 .hmain { background: var(--bone-100); padding: 30px var(--gutter) 64px; flex: 1; }
 
@@ -171,7 +172,7 @@
 /* ---- responsive: sidebar becomes a horizontal-scroll strip, same break as .acct ---- */
 @media (max-width: 1000px) {
   .hostshell { grid-template-columns: 1fr; }
-  .hside { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 16px var(--gutter); }
+  .hside { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 16px var(--gutter); position: static; height: auto; overflow-y: visible; }
   .hside__nav { display: flex; gap: 6px; overflow-x: auto; order: 4; width: 100%; padding-bottom: 2px; }
   .hside__nav .side__l { width: auto; white-space: nowrap; margin-bottom: 0; }
   .hside__foot { order: 3; margin-left: auto; }

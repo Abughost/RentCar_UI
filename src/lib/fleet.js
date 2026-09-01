@@ -145,3 +145,10 @@ export function carImages(car) {
   if (!Array.isArray(images)) return []
   return images.map((img) => mediaUrl(typeof img === 'string' ? img : img.image)).filter(Boolean)
 }
+
+/** The one photo a results-grid card shows. The list endpoint sends only `main_image` (a
+ * single URL, not the full gallery `carImages` reads from the detail endpoint), so a card
+ * falls back to the gallery's first shot for any payload that happens to carry the full array. */
+export function carMainImage(car) {
+  return mediaUrl(car?.main_image) || carImages(car)[0] || null
+}

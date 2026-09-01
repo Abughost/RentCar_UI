@@ -54,6 +54,7 @@ export default function Register() {
   const navigate = useNavigate()
   const { adoptSession, refreshUser, isAuthenticated, isRegistered } = useAuth()
 
+  const [accountType, setAccountType] = useState('client')
   const [account, setAccount] = useState({
     username: '',
     email: '',
@@ -88,6 +89,7 @@ export default function Register() {
         username: account.username.trim(),
         email,
         password: account.password,
+        account_type: accountType,
       })
       sessionStorage.setItem(PENDING_KEY, email)
       setNotice(res?.message || 'Code sent.')
@@ -193,15 +195,28 @@ export default function Register() {
           ) : (
             <>
               <h1 className="auth__claim" style={{ fontSize: 46 }}>
-                Start at
-                <br />
-                <span>zero</span>,
-                <br />
-                not at a desk.
+                {accountType === 'owner' ? (
+                  <>
+                    Your car,
+                    <br />
+                    your <span>rules</span>,
+                    <br />
+                    your income.
+                  </>
+                ) : (
+                  <>
+                    Start at
+                    <br />
+                    <span>zero</span>,
+                    <br />
+                    not at a desk.
+                  </>
+                )}
               </h1>
               <p className="auth__lede">
-                Pick a username, give us an email, and confirm the code we send. That is the whole
-                sign-up — licence details wait until you actually book.
+                {accountType === 'owner'
+                  ? 'List your car, set your price, and earn while it sits in the driveway. You can switch to renting anytime from settings.'
+                  : 'Pick a username, give us an email, and confirm the code we send. That is the whole sign-up — licence details wait until you actually book.'}
               </p>
             </>
           )}
@@ -244,6 +259,30 @@ export default function Register() {
                 We send a one-time code to the email you sign up with. Nothing is saved until you
                 confirm it.
               </p>
+
+              <div className="actype">
+                <button
+                  type="button"
+                  className={`actype__btn${accountType === 'client' ? ' is-on' : ''}`}
+                  onClick={() => setAccountType('client')}
+                >
+                  <Icon name="key" size="sm" />
+                  I want to rent
+                </button>
+                <button
+                  type="button"
+                  className={`actype__btn${accountType === 'owner' ? ' is-on' : ''}`}
+                  onClick={() => setAccountType('owner')}
+                >
+                  <Icon name="route" size="sm" />
+                  I want to host
+                </button>
+                <span
+                  className="actype__thumb"
+                  style={{ transform: accountType === 'owner' ? 'translateX(100%)' : 'translateX(0)' }}
+                />
+              </div>
+              <div style={{ height: 14 }} />
 
               <Field
                 label="Username"

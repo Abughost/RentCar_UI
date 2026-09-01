@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import Sprite from './components/Sprite'
-import { RequireAuth, RequireProfile } from './components/guards'
+import { RequireAuth, RequireClient, RequireOwner, RequireProfile } from './components/guards'
 import Account from './pages/Account'
 import CarDetail from './pages/CarDetail'
 import Cars from './pages/Cars'
@@ -108,9 +108,9 @@ export default function App() {
         <Route
           path="/owner"
           element={
-            <RequireAuth>
+            <RequireOwner>
               <OwnerLayout />
-            </RequireAuth>
+            </RequireOwner>
           }
         >
           <Route index element={<Overview />} />

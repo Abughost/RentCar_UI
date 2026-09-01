@@ -979,11 +979,18 @@
 /* ============================================================
    08 ACCOUNT
    ============================================================ */
-.acct { display: grid; grid-template-columns: 250px 1fr; flex: 1; }
+.acct { display: grid; grid-template-columns: 250px 1fr; flex: 1; min-height: 0; }
 
 /* .side (renting) and .hside (hosting, owner.css) share this look: a white panel that
    switches to the pine-dark treatment only in dark theme — see the override block below. */
-.side { background: var(--bone-050); color: var(--ink); padding: 26px 20px; border-right: 1px solid var(--bone-200); }
+.side {
+  background: var(--bone-050); color: var(--ink); padding: 26px 20px;
+  border-right: 1px solid var(--bone-200);
+  display: flex; flex-direction: column;
+  position: sticky; top: 75px; height: calc(100vh - 75px); overflow: hidden;
+}
+.side__scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.side__foot { flex: none; }
 .side__u { display: flex; gap: 12px; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--bone-200); margin-bottom: 18px; }
 .side__u .avatar { width: 40px; height: 40px; font-size: 13px; }
 .side__n { font-size: 14px; font-weight: 600; color: var(--ink); }
@@ -1086,9 +1093,11 @@
 }
 @media (max-width: 900px) {
   .acct { grid-template-columns: 1fr; }
-  .side { padding: 20px var(--gutter); }
-  .side__nav { display: flex; gap: 6px; overflow-x: auto; }
+  .side { padding: 20px var(--gutter); position: static; height: auto; overflow: visible; }
+  .side__scroll { display: flex; gap: 6px; overflow-x: auto; overflow-y: visible; min-height: auto; }
   .side__l { width: auto; white-space: nowrap; margin-bottom: 0; }
+  .side__foot { display: none; }
+  .side__warn { display: none; }
   .main { padding: 24px var(--gutter) 40px; }
 }
 
@@ -1146,4 +1155,320 @@
   .swatches { grid-template-columns: repeat(2, 1fr); }
   .shelf { grid-template-columns: 1fr; }
   .typeSpec { grid-template-columns: 1fr; gap: 6px 0; }
+}
+
+/* ============================================================
+   ACCOUNT TYPE TOGGLE (registration + settings)
+   ============================================================ */
+.actype {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bone-200);
+  border-radius: var(--r-s);
+  padding: 4px;
+  min-height: 48px;
+}
+.actype--sm { min-height: 40px; }
+.actype__btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-45);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: calc(var(--r-s) - 2px);
+  transition: color 0.22s ease;
+  white-space: nowrap;
+}
+.actype__btn.is-on { color: var(--ink); }
+.actype__thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: var(--bone-050);
+  border-radius: calc(var(--r-s) - 2px);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+/* ============================================================
+   SETTINGS PANEL
+   ============================================================ */
+.settings { display: flex; flex-direction: column; gap: 16px; }
+
+.scard {
+  background: var(--bone-050);
+  border: 1px solid var(--bone-200);
+  border-radius: var(--r-m);
+  padding: 24px;
+}
+.scard--profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.scard--danger {
+  border-color: rgba(177, 74, 51, 0.25);
+  background: rgba(177, 74, 51, 0.04);
+}
+
+.scard__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.scard__avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--pine-800);
+  color: var(--signal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 24px;
+  flex: none;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.18s ease;
+}
+.scard__avatar:hover { transform: scale(1.05); }
+.scard__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scard__initials {
+  letter-spacing: 0.04em;
+}
+.scard__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 29, 24, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  border-radius: 50%;
+}
+.scard__avatar:hover .scard__overlay { opacity: 1; }
+.scard__info { flex: 1; min-width: 0; }
+
+.scard__session {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bone-100);
+  border: 1px solid var(--bone-200);
+  border-radius: var(--r-s);
+  padding: 14px 16px;
+}
+.scard__sessionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sage);
+  flex: none;
+  box-shadow: 0 0 0 3px rgba(111, 169, 143, 0.25);
+}
+
+@media (max-width: 700px) {
+  .scard--profile { flex-direction: column; text-align: center; }
+  .scard__row { flex-direction: column; align-items: stretch; }
+  .actype--sm { width: 100%; }
+}
+
+/* ============================================================
+   PROFILE TRIGGER (bottom of sidebar)
+   ============================================================ */
+.side__trigger {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-s);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--body);
+  transition: background 0.15s ease;
+}
+.side__trigger:hover { background: var(--bone-200); }
+:root[data-theme='dark'] .side__trigger:hover { background: rgba(233, 235, 228, 0.07); }
+
+/* ============================================================
+   SETTINGS MODAL (centered, sidebar + content like Claude)
+   ============================================================ */
+.stmod {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  animation: stmod-fade 0.2s ease both;
+}
+@keyframes stmod-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.stmod__box {
+  display: flex;
+  width: min(820px, calc(100vw - 48px));
+  height: min(560px, calc(100vh - 80px));
+  background: var(--bone-050);
+  border: 1px solid var(--bone-200);
+  border-radius: var(--r-m);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: stmod-up 0.25s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes stmod-up {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.stmod__side {
+  width: 200px;
+  flex: none;
+  background: var(--bone-100);
+  border-right: 1px solid var(--bone-200);
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stmod__ht {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  padding: 0 10px;
+  margin-bottom: 12px;
+}
+.stmod__tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-s);
+  font-size: 13.5px;
+  font-family: var(--body);
+  color: var(--ink-70);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.stmod__tab:hover { background: var(--bone-200); color: var(--ink); }
+.stmod__tab.is-on { background: var(--bone-200); color: var(--ink); font-weight: 600; }
+
+.stmod__main {
+  flex: 1;
+  padding: 28px 32px;
+  overflow-y: auto;
+  position: relative;
+}
+.stmod__close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-45);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--r-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.stmod__close:hover { color: var(--ink); background: var(--bone-200); }
+
+.stmod__title {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--ink);
+  margin-bottom: 20px;
+}
+.stmod__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--bone-200);
+}
+.stmod__row:last-child { border-bottom: 0; }
+.stmod__label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  min-width: 120px;
+  flex-shrink: 0;
+}
+.stmod__fields {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+.stmod__fields .fld { flex: 1; }
+.stmod__divider {
+  height: 1px;
+  background: var(--bone-200);
+  margin: 24px 0;
+}
+
+/* dark theme */
+:root[data-theme='dark'] .stmod { background: rgba(0, 0, 0, 0.6); }
+:root[data-theme='dark'] .stmod__box { background: var(--pine-800); border-color: rgba(233, 235, 228, 0.14); }
+:root[data-theme='dark'] .stmod__side { background: var(--pine-900); border-right-color: rgba(233, 235, 228, 0.1); }
+:root[data-theme='dark'] .stmod__ht { color: rgba(233, 235, 228, 0.4); }
+:root[data-theme='dark'] .stmod__tab { color: rgba(233, 235, 228, 0.6); }
+:root[data-theme='dark'] .stmod__tab:hover { background: rgba(233, 235, 228, 0.07); color: var(--on-pine); }
+:root[data-theme='dark'] .stmod__tab.is-on { background: rgba(233, 235, 228, 0.1); color: var(--on-pine); }
+:root[data-theme='dark'] .stmod__close { color: rgba(233, 235, 228, 0.5); }
+:root[data-theme='dark'] .stmod__close:hover { color: var(--on-pine); background: rgba(233, 235, 228, 0.07); }
+:root[data-theme='dark'] .stmod__title { color: var(--on-pine); }
+:root[data-theme='dark'] .stmod__label { color: rgba(233, 235, 228, 0.8); }
+:root[data-theme='dark'] .stmod__row { border-bottom-color: rgba(233, 235, 228, 0.1); }
+:root[data-theme='dark'] .stmod__divider { background: rgba(233, 235, 228, 0.1); }
+
+@media (max-width: 600px) {
+  .stmod__box { flex-direction: column; height: min(90vh, calc(100vh - 32px)); width: calc(100vw - 24px); }
+  .stmod__side { width: auto; flex-direction: row; overflow-x: auto; gap: 4px; padding: 12px; border-right: 0; border-bottom: 1px solid var(--bone-200); }
+  .stmod__ht { display: none; }
+  .stmod__tab { white-space: nowrap; }
+  .stmod__main { padding: 20px 16px; }
+  .stmod__row { flex-direction: column; align-items: stretch; }
+  .stmod__fields { flex-direction: column; }
 }

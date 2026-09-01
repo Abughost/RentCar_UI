@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { money, rateForDays } from '../lib/pricing'
 import {
   bodyShape,
-  carImages,
+  carMainImage,
   carTitle,
   carYear,
   categoryName,
@@ -22,7 +23,10 @@ import { Button, CarArt, Gauge, Icon, Plate, Tag } from './primitives'
 export default function CarCard({ car, days, wide = false, featured = false }) {
   const perDay = rateForDays(car, days)
   const total = perDay != null && days ? perDay * days : null
-  const images = carImages(car)
+  const mainImage = carMainImage(car)
+  // Some fixtures point at a filename with no file behind it — the same "no photo yet" fallback
+  // as the detail page's gallery, rather than a broken-image glyph.
+  const [photoBroken, setPhotoBroken] = useState(false)
   const shape = bodyShape(car)
   const plate = plateFor(car.id)
   const category = categoryName(car)
@@ -51,8 +55,14 @@ export default function CarCard({ car, days, wide = false, featured = false }) {
             Electric
           </Tag>
         )}
-        {images[0] ? (
-          <img className="car__photo" src={images[0]} alt="" loading="lazy" />
+        {mainImage && !photoBroken ? (
+          <img
+            className="car__photo"
+            src={mainImage}
+            alt=""
+            loading="lazy"
+            onError={() => setPhotoBroken(true)}
+          />
         ) : (
           <CarArt shape={shape} />
         )}

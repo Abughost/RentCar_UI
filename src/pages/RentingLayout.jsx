@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { rentals as rentalsApi, toList } from '../api/endpoints'
+import { mediaUrl } from '../api/client'
 import Nav from '../components/Nav'
 import TabBar from '../components/TabBar'
 import { Icon } from '../components/primitives'
-import { useAuth } from '../state/AuthContext'
+import { fullName, initials, useAuth } from '../state/AuthContext'
+import { SettingsPanel } from './Account'
 
 export const SECTIONS = [
   { id: 'trips', label: 'Trips', icon: 'key' },
@@ -12,7 +14,6 @@ export const SECTIONS = [
   { id: 'payment', label: 'Payment', icon: 'card' },
   { id: 'loyalty', label: 'Loyalty', icon: 'star' },
   { id: 'invoices', label: 'Invoices', icon: 'route' },
-  { id: 'settings', label: 'Settings', icon: 'user' },
 ]
 
 /**
@@ -21,19 +22,20 @@ export const SECTIONS = [
  * the moment a customer leaves /account for the fleet.
  */
 export default function RentingLayout() {
-  const { user, isStaff, isAuthenticated } = useAuth()
+  const { user, isStaff, isAuthenticated, isClient } = useAuth()
   const { pathname } = useLocation()
   const [tripCount, setTripCount] = useState(0)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
-    if (!isAuthenticated) return undefined
+    if (!isAuthenticated || !isClient) return undefined
     const ac = new AbortController()
     rentalsApi
       .mine({ signal: ac.signal })
       .then((data) => setTripCount(toList(data).length))
       .catch(() => {})
     return () => ac.abort()
-  }, [isAuthenticated])
+  }, [isAuthenticated, isClient])
 
   const activeSection = pathname === '/account' ? 'trips' : pathname.replace('/account/', '')
 
@@ -46,7 +48,7 @@ export default function RentingLayout() {
       {isAuthenticated ? (
         <div className="acct">
           <aside className="side">
-            <div className="side__nav">
+            <div className="side__scroll">
               <Link to="/cars" className={`side__l${pathname === '/cars' ? ' is-on' : ''}`}>
                 <Icon name="search" size="sm" />
                 Find a car
@@ -62,32 +64,55 @@ export default function RentingLayout() {
                   {item.id === 'trips' && tripCount > 0 && <span className="side__badge">{tripCount}</span>}
                 </Link>
               ))}
+
+              {isStaff && (
+                <>
+                  <div className="divider--onDark" style={{ margin: '18px 0' }} />
+                  <a className="side__l" href="/en/admin/" target="_blank" rel="noreferrer">
+                    <Icon name="out" size="sm" />
+                    Django admin
+                  </a>
+                </>
+              )}
+
+              {!user?.is_registered && !isStaff && (
+                <>
+                  <div className="divider--onDark" style={{ margin: '18px 0' }} />
+                  <div className="side__warn">
+                    <div className="side__warnT">Licence not on file</div>
+                    <div className="side__warnX">
+                      Add it once and every pick-up becomes a plate number and a key.
+                    </div>
+                    <Link to="/register/licence" className="btn btn--signal btn--sm" style={{ marginTop: 10 }}>
+                      Add licence
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
 
-            {isStaff && (
-              <>
-                <div className="divider--onDark" style={{ margin: '18px 0' }} />
-                <a className="side__l" href="/en/admin/" target="_blank" rel="noreferrer">
-                  <Icon name="out" size="sm" />
-                  Django admin
-                </a>
-              </>
-            )}
-
-            {!user?.is_registered && !isStaff && (
-              <>
-                <div className="divider--onDark" style={{ margin: '18px 0' }} />
-                <div className="side__warn">
-                  <div className="side__warnT">Licence not on file</div>
-                  <div className="side__warnX">
-                    Add it once and every pick-up becomes a plate number and a key.
+            <div className="side__foot">
+              <div className="divider--onDark" style={{ margin: '18px 0' }} />
+              <button
+                type="button"
+                className="side__trigger"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <span className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
+                  {user?.photo ? (
+                    <img src={mediaUrl(user.photo)} alt="" className="avatar__photo" />
+                  ) : (
+                    initials(user)
+                  )}
+                </span>
+                <div>
+                  <div className="side__n">{fullName(user)}</div>
+                  <div className="side__t">
+                    {isClient ? 'RENTER' : 'HOST'} · {tripCount} TRIP{tripCount === 1 ? '' : 'S'} · 4.9★
                   </div>
-                  <Link to="/register/licence" className="btn btn--signal btn--sm" style={{ marginTop: 10 }}>
-                    Add licence
-                  </Link>
                 </div>
-              </>
-            )}
+              </button>
+            </div>
           </aside>
 
           <main className="main">
@@ -97,6 +122,8 @@ export default function RentingLayout() {
       ) : (
         <Outlet />
       )}
+
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
 
       <TabBar />
     </div>

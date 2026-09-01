@@ -12,8 +12,8 @@ export const auth = {
    * no row is written until the code is confirmed. Answers 429 with {retry_after} while a
    * previous code is still inside its resend window, or during a lockout.
    */
-  sendCode: ({ username, email, password }) =>
-    api.post('auth/send-code', { username, email, password }, { auth: false }),
+  sendCode: ({ username, email, password, account_type }) =>
+    api.post('auth/send-code', { username, email, password, account_type }, { auth: false }),
 
   /**
    * Step 2. Creates the User once the code matches and hands back {access, refresh, user},
@@ -44,6 +44,10 @@ export const auth = {
    * User.is_registered on save, and no booking is allowed until it exists.
    */
   createProfile: (profile) => api.post('auth/register', profile),
+
+  updateUser: (formData) => api.patch('auth/user/update', formData, { isForm: true }),
+
+  deleteAccount: () => api.del('auth/user/delete'),
 }
 
 /* ---------------------------------------------------------------- cars */

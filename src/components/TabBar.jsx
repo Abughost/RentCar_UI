@@ -5,7 +5,7 @@ const TABS = [
   { to: '/cars', label: 'SEARCH', icon: 'search' },
   { to: '/account', label: 'TRIPS', icon: 'key' },
   { to: '/stations', label: 'STATIONS', icon: 'pin' },
-  { to: '/account/settings', label: 'ACCOUNT', icon: 'user' },
+  { to: '/account/licence', label: 'ACCOUNT', icon: 'user' },
 ]
 
 /** Frame 09's bottom bar. CSS keeps it off screens wider than 760px. */
@@ -14,7 +14,7 @@ export default function TabBar({ dark = false }) {
     <nav className={`tabbar${dark ? ' tabbar--dark' : ''}`} aria-label="Main">
       {TABS.map((tab) => (
         <NavLink
-          key={tab.to}
+          key={tab.label}
           to={tab.to}
           className={({ isActive }) => `tabbar__t${isActive ? ' is-on' : ''}`}
         >

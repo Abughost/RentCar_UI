@@ -66,7 +66,6 @@ export default function CarDetail() {
   const [car, setCar] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [shot, setShot] = useState(0)
   const [open, setOpen] = useState(0)
   // Photo URLs that 404'd. The gallery still falls back to the shape silhouette per broken
   // slot rather than a broken-image glyph, the same pattern as the brand badges on the home
@@ -79,7 +78,6 @@ export default function CarDetail() {
     const ac = new AbortController()
     setLoading(true)
     setError(null)
-    setShot(0)
     setBrokenPhotos(new Set())
     setLightboxAt(null)
 
@@ -233,31 +231,16 @@ export default function CarDetail() {
             </div>
           </div>
 
-          {/* Keyed on the car, not the shot — switching photos of the same car should not
-              replay the drive-in, but landing on a different car (e.g. from "similar cars")
-              should, the same way the hero odometer re-rolls on a new price. */}
-          <div
-            className={`hero-car${images.length > 0 && !brokenPhotos.has(shot) ? '' : ' hero-car--empty'}`}
-            key={car.id}
-          >
+          {/* The hero always shows the category badge — a real photo, once one exists, is a
+              specific unit's actual condition, not a stand-in for "this is a G63". Clicking a
+              thumbnail below opens that real photo in the lightbox instead. */}
+          <div className="hero-car hero-car--empty" key={car.id}>
             <Plate number={plate} className="hero-car__plate" />
             <div className="hero-car__emblem">
-              {images.length > 0 && !brokenPhotos.has(shot) ? (
-                <img
-                  className="hero-car__photo"
-                  src={images[shot]}
-                  alt={title}
-                  onError={() => markBroken(shot)}
-                  onClick={() => setLightboxAt(validImages.indexOf(images[shot]))}
-                />
-              ) : (
-                // No photo on file — a small badge (icon over its own category name), not a
-                // stand-in hero image. It should read as "no photo yet", not as the photo.
-                <div className="hero-car__badge">
-                  <CarArt shape={shape} className="hero-car__badgeArt" />
-                  <div className="hero-car__badgeName">{category || shapeLabel(shape)}</div>
-                </div>
-              )}
+              <div className="hero-car__badge">
+                <CarArt shape={shape} className="hero-car__badgeArt" />
+                <div className="hero-car__badgeName">{category || shapeLabel(shape)}</div>
+              </div>
             </div>
           </div>
 
@@ -269,8 +252,8 @@ export default function CarDetail() {
                       <button
                         key={src}
                         type="button"
-                        className={`thumb${i === shot ? ' is-on' : ''}`}
-                        onClick={() => setShot(i)}
+                        className="thumb"
+                        onClick={() => setLightboxAt(validImages.indexOf(src))}
                         aria-label={`Photo ${i + 1}`}
                       >
                         <img src={src} alt="" loading="lazy" onError={() => markBroken(i)} />
